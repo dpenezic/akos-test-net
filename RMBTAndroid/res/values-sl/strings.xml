@@ -1,0 +1,377 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copyright 2013-2015 alladin-IT GmbH
+  
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+  
+    http://www.apache.org/licenses/LICENSE-2.0
+  
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<resources>
+    
+    <string name="error_no_internet">Povezava s spletom ni\nna voljo</string>   
+    <string name="error_no_data">Ni razpoložljivih podatkov.</string>
+    <string name="error_history_no_data_no_connection">Ni povezave s spletom. Podatkov ni bilo mogoče naložiti.</string>
+    
+    <string name="main_dialog_registration_title">Registracija…</string>
+    <string name="main_dialog_registration_text">Registracija odjemalca. Prosimo, počakajte…</string>
+    
+    <string name="main_dialog_reload_title">Ponovno nalaganje…</string>
+    <string name="main_dialog_reload_text">Ponovno nalaganje podatkov. Prosimo, počakajte…</string>
+    
+    <string name="preferences">Nastavitve</string>
+    
+    <string name="preferences_category_test">Preference</string>
+    
+    <string name="preferences_location_settings">Lokacija</string>
+    <string name="preferences_location_settings_sum">Spremeni nastavitve lokacije</string>
+    
+    <string name="preferences_no_gps">Brez GPS</string>
+    <string name="preferences_no_gps_sum">Med testom ne uporabi GPS-a.</string>
+    
+    <string name="preferences_tag">Oznaka</string>
+    <string name="preferences_tag_sum">Dodajte oznako po meri posameznemu testu</string>
+    
+    <string name="preferences_loop_mode">Ponavljanje</string>
+    <string name="preferences_loop_mode_sum">Test se bo izvajal v ponovitvenem načinu</string>
+    
+    <string name="preferences_loop_mode_max_tests">Največje število ponovitev testov</string>
+    <string name="preferences_loop_mode_max_tests_sum">Največje število testov, če je izbran ponovitveni način (0 = neskončno izvajanje)</string>
+    
+    <string name="preferences_loop_mode_min_delay">Najmanjša zakasnitev ponovitve</string>
+    <string name="preferences_loop_mode_min_delay_sum">Najkrajši čas med dvema testoma v sekundah, če je izbran ponovitveni način</string>
+    
+    <string name="preferences_loop_mode_max_delay">Največja zakasnitev ponovitve</string>
+    <string name="preferences_loop_mode_max_delay_sum">Najdaljši čas med dvema testoma v sekundah, če je izbran ponovitveni način</string>
+    
+    <string name="preferences_loop_mode_movement">Premikanje v ponovitvenem načinu</string>
+    <string name="preferences_loop_mode_movement_sum">Premikanje v metrih, po katerem se sproži ponovitveni način</string>
+    
+    <string name="preferences_loop_mode_gps">Uporabi GPS, ko je aktiviran ponovitveni način </string>
+    <string name="preferences_loop_mode_gps_sum">Uporabi GPS med dvema testoma pri ponovitvenemu načinu</string>
+    
+    <string name="preferences_ndt">NDT</string>
+    <string name="preferences_ndt_sum">Omogoči razširjen test</string>
+    
+    <string name="preferences_ic">Objava osebnih podatkov</string>
+    
+    <string name="preferences_ipv4_only">Samo IPv4</string>
+    <string name="preferences_ipv4_only_sum">Nikoli ne uporabi IPv6</string>
+    
+    <string name="preferences_category_developer">RAZVOJ</string>
+    <string name="preferences_category_loop_mode">Ponovitveni način</string>
+    <string name="preferences_category_developer_control_server">Kontrolni strežnik</string>
+    <string name="preferences_category_developer_map_server">Strežnik z zemljevidi</string>
+    <string name="preferences_category_developer_qos_server">Strežnik za test omrežnih storitev</string>
+    <string name="preferences_category_developer_debug">Iskanje in odpravljanje napak</string>
+    
+    <string name="preferences_dev_control_override">Razveljavi kontrolni strežnik</string>
+    <string name="preferences_dev_control_override_sum">Uporabi nastavitve po meri za kontrolni strežnik</string>
+    
+    <string name="preferences_dev_control_host">Kontrolni gostitelj</string>
+    <string name="preferences_dev_control_host_sum">Razveljavi naslov kontrolnega strežnika</string>
+    
+    <string name="preferences_dev_control_port">Kontrolna vrata</string>
+    <string name="preferences_dev_control_port_sum">Razveljavi vrata kontrolnega strežnika</string>
+    
+    <string name="preferences_dev_control_ssl">SSL - kontrolni strežnik</string>
+    <string name="preferences_dev_control_ssl_sum">Uporabi šifrirano povezavo do kontrolnega strežnika</string>
+    
+    <string name="preferences_dev_map_override">Razveljavi strežnik z zemljevidi</string>
+    <string name="preferences_dev_map_override_sum">Uporabi nastavitve po meri za strežnik z zemljevidi</string>
+    
+    <string name="preferences_dev_map_host">Gostitelj z zemljevidi</string>
+    <string name="preferences_dev_map_host_sum">Razveljavi naslov strežnika z zemljevidi</string>
+    
+    <string name="preferences_dev_map_port">Vrata za zemljevide</string>
+    <string name="preferences_dev_map_port_sum">Razveljavi vrata strežnika z zemljevidi</string>
+    
+    <string name="preferences_dev_map_ssl">SSL - strežnik z zemljevidi</string>
+    <string name="preferences_dev_map_ssl_sum">Uporabi šifrirano povezavo do strežnika z zemljevidi</string>
+
+    <string name="preferences_dev_qos_ssl" >SSL - Strežnik za test omrežnih storitev</string>
+    <string name="preferences_dev_qos_ssl_sum" >Uporabi šifrirano povezavo do strežnika za test omrežnih storitev</string>
+    
+    <string name="preferences_dev_debug_sysout" >Shrani sporočilo o napaki v datoteko</string>
+    <string name="preferences_dev_debug_sysout_sum" >Shrani sporočilo o napaki v tekstovno datoteko, v mapo "qosdebug"</string>
+
+    <string name="menu_button_start">START</string>
+    <string name="menu_button_title_page">Domov</string>
+    <string name="menu_button_map">Zemljevid</string>
+    <string name="menu_button_history">Zgodovina</string>
+    <string name="menu_button_help">Pomoč</string>
+    <string name="menu_button_statistics">Statistika</string>
+    <string name="menu_button_settings">Nastavitve</string>
+    <string name="menu_button_about">Info</string>
+    <string name="menu_button_log">Dnevniki</string>
+    <string name="menu_button_share">Deli</string>
+	<string name="menu_button_netstat">Netstat</string>
+    
+    <string name="news_title">Novice</string>
+    <string name="news_no_message">Ni besedila za sporočilo.</string>
+    
+    <string name="about_version_title">Različica</string>
+    <string name="about_clientid_title">UUID odjemalca</string>
+    <string name="about_clientid_toast">UUID odjemalca se je skopiral v odložišče.</string>
+    <string name="about_web_title">Splet</string>
+    <string name="about_email_title">Elektronsko sporočilo</string>
+    <string name="about_email_sending">Pošiljanje elektronskega sporočila…</string>
+    <string name="about_terms_title">Politika zasebnosti</string>
+    <string name="about_terms_line1">Politika zasebnosti in pogoji uporabe</string>
+    <string name="about_dev_title">Razvoj</string>
+    <string name="about_gms_legal_title">Google Play</string>
+    <string name="about_gms_legal_line1">Pravno obvestilo storitev Google Play</string>
+    <string name="about_test_counter_title">Števec testov</string>
+    
+    <string name="terms">Politika zasebnosti in pogoji uporabe</string>
+    
+    <string name="terms_accept_button">Strinjam se</string>
+    <string name="terms_accept_button_continue">Nadaljuj</string>
+    <string name="terms_decline_button">Zavrni</string>
+
+	<string name="terms_ic_header">Objava osebnih podatkov</string>
+    <string name="terms_ic_accept_text"><b>Objava osebnih podatkov.</b></string>
+    
+    <string name="terms_ndt_header">Izbirni, podrobnejši NDT Test</string>
+    <string name="terms_ndt_accept_text"><b>Želim pognati izbirni NDT Test.</b></string>
+    <string name="terms_ndt_back_button">Nazaj</string>
+    <string name="terms_ndt_accept_button">Nadaljuj</string>
+    
+    <string name="loop_notification_ticker">Ponovitveni način je aktiven…</string>
+    <string name="loop_notification_title">Ponovitveni način je aktiven</string>
+    <string name="loop_notification_text">Pritisni za prekinitev ponovitvenega načina</string>
+    
+    <string name="loop_started">Ponovitveni način se je začel.</string>
+    <string name="loop_already_active">Ponovitveni način je že aktiviran.</string>
+    
+    <string name="test_mbps">Mbps</string>
+    <string name="test_dbm">dBm</string>
+    <string name="test_location_km_h">km/h</string>
+    <string name="test_location_m">m</string>
+    <string name="test_location_sat">Sateliti</string>
+    <string name="test_location_gps">GPS</string>
+    <string name="test_location_network">Omrežje</string>
+    <string name="test_location_dir_n">S</string>
+    <string name="test_location_dir_e">V</string>
+    <string name="test_location_dir_s">J</string>
+    <string name="test_location_dir_w">Z</string>
+    
+    <string name="test_notification_text">V ozadju se še vedno izvaja test.</string>
+    <string name="test_dialog_error_title">Napaka…</string>
+    <string name="test_dialog_error_text">Med testom je prišlo do napake.</string>
+    <string name="test_dialog_error_control_server_conn">Povezave s testnim strežnikom ni bilo mogoče vzpostaviti.</string>
+    <string name="test_toast_error_text_qos">Med testom omrežnih storitev je prišlo do napake.</string>
+    
+    <string name="test_dialog_abort_title">Prekini…</string>
+    <string name="test_dialog_abort_text">Ali zares želite prekiniti test?</string>
+    <string name="test_dialog_abort_yes">Prekini test</string>
+    <string name="test_dialog_abort_no">Nadaljuj s testom</string>
+    
+    <string name="history_button_sync">Sinhroniziraj</string>
+    <string name="history_button_filter">Filtriraj</string>
+    <string name="history_device">Naprava</string>
+	<string name="history_type">Dostop</string>
+	<string name="history_date">Datum</string>
+	<string name="history_down">Pritočna hitrost\nMbps</string>
+	<string name="history_up">Odtočna hitrost\nMbps</string>
+	<string name="history_ping">Ping\nms</string>
+	
+	<string name="history_filter">FILTER</string>
+	<string name="history_filter_networks">TIP OMREŽJA</string>
+	<string name="history_filter_devices">NAPRAVA</string>
+	<string name="history_filter_result_number">ŠTEVILO REZULTATOV</string>
+	<string name="history_filter_result_number_25">Prikaži samo zadnjih 25 rezultatov</string>
+	
+	<string name="result_measurement">MERITEV</string>
+	<string name="result_net">OMREŽJE</string>
+	
+	<string name="result_details">PODROBNOSTI</string>
+	
+	<string name="result_category_tests">TESTI</string>
+	<string name="result_description">OPIS</string>
+	
+	<string name="sync_info_text">Združite lahko rezultate testa iz dveh različnih naprav. Če želite to storiti, vnesite kodo za sinhronizacijo, za katero ste zaprosili, ali pa zaprosite za novo kodo.</string>
+	<string name="sync_request_code_button">Zaprosi za kodo</string>
+	<string name="sync_enter_code_button">Vnesi kodo</string>
+	
+	<string name="sync_enter_code_header">Vnos kode</string>
+	<string name="sync_enter_code_msg">Koda</string>
+	<string name="sync_enter_code_desc">Prosimo, vnesite kodo, ki ste jo prejeli na drugi napravi.</string>
+	<string name="sync_enter_code_length">Koda mora biti dolga 12 znakov</string>
+	
+	<string name="sync_request_code_header">Vaša koda za sinhronizacijo je:</string>
+	<string name="sync_request_code_msg">Pridobivam kodo…</string>
+	<string name="sync_request_code_desc">Prosimo, da za sinhronizacijo na drugi napravi vnesete kodo, ki se je prikazala zgoraj.</string>
+	<string name="sync_request_code_context_copy">Kopiraj kodo</string>
+	
+	<!-- Map -->
+	<string name="map_filter_header">FILTER ZEMLJEVIDA</string>
+	<string name="map_choose_header">IZBERI ZEMLJEVID</string>
+	
+	<string name="map_appearance_header">PRIKAZ ZEMLJEVIDA</string>
+	<string name="map_appearance_nosat_title">Običajni pogled</string>
+	<string name="map_appearance_nosat_summary">Zemljevid je prikazan v običajnem pogledu</string>
+	<string name="map_appearance_sat_title">Pogled iz satelita</string>
+	<string name="map_appearance_sat_summary">Zemljevid je prikazan v pogledu iz satelita</string>
+	
+	<string name="map_overlay_header">PRIKAZ REZULTATOV NA ZEMLJEVIDU</string>
+	<string name="map_overlay_auto_title">Samodejno</string>
+	<string name="map_overlay_auto_summary">Zemljevid samodejno prehaja med prikazom toplotnega zemljevida in točkovnim pogledom</string>
+	<string name="map_overlay_heatmap_title">Toplotni zemljevid</string>
+	<string name="map_overlay_heatmap_summary">Zemljevid prikazuje rezultate testov kot toplotni zemljevid</string>
+	<string name="map_overlay_points_title">Točkovni pogled</string>
+	<string name="map_overlay_points_summary">Zemljevid prikazuje rezultate testov kot točke</string>
+	<string name="map_overlay_shapes_title">Oblike</string>
+	<string name="map_overlay_shapes_summary">Zemljevid prikazuje rezultate testov v oblikah po poštnih številkah</string>
+	<string name="map_overlay_regions_title">Regija</string>
+	<string name="map_overlay_regions_summary"></string>
+	<string name="map_overlay_municipality_title">Občina</string>
+	<string name="map_overlay_municipality_summary"></string>	
+	<string name="map_overlay_settlements_title">Naselje</string>
+	<string name="map_overlay_settlements_summary"></string>	
+	<string name="map_overlay_whitespots_title">Bele lise</string>
+	<string name="map_overlay_whitespots_summary"></string>	
+	
+	<string name="map_balloon_overlay_header">MERITVE</string>
+	
+	<!-- Test -->
+	<string name="test_progress_title">Povezujem…</string>
+	<string name="test_progress_text">Povezava s testnim strežnikom se vzpostavlja. Prosimo, počakajte…</string>
+	<string name="test_progress_text_wait">Testni strežnike je trenutno zaseden. Test se bo začel {0,choice,0#v kratkem|1#čez 1 sekundo|1&lt;čez {0} sekund}. Prosimo, počakajte…</string>
+	<string name="test_bottom_test">Stanje: {0}\nStrežnik: {1}\nIP: {2}\n{3}\n{4}</string>
+	<string name="test_bottom_test_status_init">Inicializacija</string>
+	<string name="test_bottom_test_status_ping">Zakasnitev</string>
+	<string name="test_bottom_test_status_down">Pritočna hitrost</string>
+	<string name="test_bottom_test_status_init_up">Inicializacija odtočne povezave</string>
+	<string name="test_bottom_test_status_up">Odtočna hitrost</string>
+	<string name="test_bottom_test_status_end">Zaključevanje</string>
+	<string name="test_bottom_test_status_error">Napaka</string>
+	<string name="test_bottom_test_status_aborted">Prekinjeno</string>
+	
+	<string name="test_bottom_test_status_ip">IP:</string>
+	<string name="test_bottom_test_status_server">Strežnik:</string>
+	
+	
+	<!-- QoS values: -->
+	
+	<string name="about_control_server_version">Različica kontrolnega strežnika</string>
+	
+	<string name="preferences_dont_show_menu_on_exit">Brez menija ob izhodu</string>
+    <string name="preferences_dont_show_menu_on_exit_sum">Ne prikaži menija aplikacije, preden se aplikacija zapre.</string>
+	
+	<string name="term_signal">Signal</string>
+	
+	<string name="result_page_title_qos">NST</string>
+	<string name="result_page_title_test">Podrobnosti</string>
+	<string name="result_page_title_menu">Rezultat</string>
+	<string name="result_page_title_graph">Graf</string>
+	<string name="result_page_title_map">Lokacija</string>
+		
+	<string-array name="result_page_title">
+	  	<item>@string/result_page_title_menu</item>
+	    <item>@string/result_page_title_qos</item>
+	    <item>@string/result_page_title_test</item>
+		<item>@string/result_page_title_graph</item>
+	    <item>@string/result_page_title_map</item>
+	</string-array>
+	
+	<string name="qos_test_name_website">Referenčna spletna stran</string>
+	<string name="qos_test_name_http_proxy">Nespremenjena vsebina</string>
+	<string name="qos_test_name_non_transparent_proxy">Transparentna povezava</string>
+	<string name="qos_test_name_dns">DNS</string>
+	<string name="qos_test_name_tcp">TCP vrata</string>	
+	<string name="qos_test_name_udp">UDP vrata</string>
+	<string name="qos_test_name_voip">VoIP</string>
+	<string name="qos_test_name_traceroute">Traceroute</string>
+	
+	<string name="qos_test_result_error">Napaka</string>
+	<string name="qos_test_result_all">Rezultati</string>
+	
+	<string name="result_graph_download_and_speed">Pritočna hitrost (Mbps)</string>
+	<string name="result_graph_upload_and_speed">Odtočna hitrost (Mbps)</string>
+	
+	<string name="result_details_qos_failure">NEUSPEŠNO</string>
+	<string name="result_details_qos_success">USPEŠNO</string>
+	<string name="result_details_qos_info">DODATNI REZULTATI</string>
+	
+	<string name="page_title_title_page">Meni</string>
+	<string name="page_title_history">Zgodovina</string>
+	<string name="page_title_help">Pomoč</string>
+	<string name="page_title_statistics">Statistika</string>
+	<string name="page_title_information">Informacije</string>
+	<string name="page_title_map">Zemljevid</string>
+	<string name="page_title_settings">Nastavitve</string>
+	<string name="page_title_about">O aplikaciji</string>
+	<string name="page_title_main_result">Rezultat testa</string>
+	<string name="page_title_sync">Sinhroniziraj</string>
+	<string name="page_title_qos_result">Rezultati testa omrežnih storitev</string>
+	
+	<string-array name="navigation_main_titles">
+	    <item>@string/menu_button_title_page</item>
+    	<item>@string/page_title_history</item>
+    	<item>@string/page_title_map</item>    	
+    	<item>@string/menu_button_statistics</item>
+    	<item>@string/page_title_help</item>
+    	<item>@string/page_title_information</item>
+    	<item>@string/page_title_settings</item>
+	</string-array>
+	
+	<string name="result_qos_stats">Testi kakovosti</string>
+	<string name="result_qos_error_no_data_available">Test omrežnih storitev ni bil opravljen</string>
+	
+	<string name="title_screen_cpu">CPU</string>
+	<string name="title_screen_ram">RAM</string>
+	<string name="title_screen_ip">IP</string>
+	<string name="title_screen_ipv4">IPv4</string>
+	<string name="title_screen_ipv6">IPv6</string>
+	<string name="title_screen_cpu_mem_info">CPU &amp; uporaba spomina</string>
+	<string name="title_screen_traffic_info">Promet</string>
+	<string name="title_screen_location_info">Lokacija</string>
+	<string name="title_screen_traffic">Promet v ozadju</string>
+	<string name="title_screen_network_id">ID omrežja:</string>
+	
+	<string name="title_screen_info_overlay_location">Lokacija</string>
+	<string name="title_screen_info_overlay_ipv4_public">Javni IPv4</string>
+	<string name="title_screen_info_overlay_ipv4_private">Zasebni IPv4</string>
+	<string name="title_screen_info_overlay_ipv6_public">Javni IPv6</string>
+	<string name="title_screen_info_overlay_ipv6_private">Zasebni IPv6</string>
+	<string name="title_screen_info_overlay_ul_traffic">Promet v odtočni smeri</string>
+	<string name="title_screen_info_overlay_dl_traffic">Promet v pritočni smeri</string>
+	<string name="title_screen_info_overlay_control_server_conn">Povezava s kontrolnim strežnikom</string>
+	<string name="title_screen_info_overlay_captive_portal_status">Portal za prestrezanje</string>
+	<string name="title_screen_info_overlay_is_loopback">Je zaprtozančni (loopback)</string>
+	<string name="title_screen_info_overlay_is_link_local">Je lokalna povezava</string>
+	<string name="title_screen_info_overlay_location_position">Položaj</string>
+	<string name="title_screen_info_overlay_location_source">Vir</string>
+	<string name="title_screen_info_overlay_location_accuracy">Natančnost</string>
+	<string name="title_screen_info_overlay_location_altitude">Višina</string>
+	<string name="title_screen_info_overlay_location_age">Starost</string>
+	<string name="title_screen_info_overlay_cpu_usage">Uporaba CPU</string>
+	<string name="title_screen_info_overlay_cpu_cores">Št. jeder CPU</string>
+	<string name="title_screen_info_overlay_mem_usage">Uporaba spomina</string>
+	<string name="title_screen_info_overlay_mem_total">Celotni spomin</string>
+	<string name="title_screen_info_overlay_mem_free">Prost spomin</string>
+	
+		
+	<string name="captive_portal_found">Najden</string>
+	<string name="captive_portal_not_found">ni bil najden</string>
+	<string name="captive_portal_testing">test se izvaja…</string>
+	
+	<string name="not_available">ni na voljo</string>
+	
+	<string name="test_label_test_info">Informacije o testu</string>
+	<string name="test_label_progress">Napredek</string>
+	<string name="test_label_quality_test">Test NST</string>
+	
+	<string name="netstat_local_address">Lokalni naslov</string>
+	<string name="netstat_remote_address">Oddaljeni naslov</string>
+	
+	<string name="start_data_consumption_warning">Uporaba Open-RMBTa na mobilnih napravah je lahko povezana z večjo količino porabe podatkov. Pri uporabi testa na tehnologiji 3G znaša običajna poraba podatkov v okviru enega testa med 5 in 10 MB, na tehnologiji 4G pa lahko preseže tudi 100 MB</string>
+</resources>

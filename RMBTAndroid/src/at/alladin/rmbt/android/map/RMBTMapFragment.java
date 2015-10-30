@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,6 +40,7 @@ import android.widget.Toast;
 import at.alladin.openrmbt.android.R;
 import at.alladin.rmbt.android.main.AppConstants;
 import at.alladin.rmbt.android.main.RMBTMainActivity;
+import at.alladin.rmbt.android.map.MapProperties.MapOverlay;
 import at.alladin.rmbt.android.map.overlay.RMBTBalloonOverlayItem;
 import at.alladin.rmbt.android.map.overlay.RMBTBalloonOverlayView;
 import at.alladin.rmbt.android.util.CheckMarker;
@@ -262,9 +263,12 @@ public class RMBTMapFragment extends MapFragment implements OnClickListener, OnC
             boolean needPointsOverlay = false;
             boolean needShapesOverlay = false;
             
-            final int mapOverlayType = activity.getMapOverlayType();
+            final MapOverlay mapOverlayType = activity.getMapOverlayType();
+            System.out.println("addition parameters for " + mapOverlayType + " = " + mapOverlayType.getAdditionalParameters());
+            mapOptions.putAll(mapOverlayType.getAdditionalParameters());
+            
             final String mapType = activity.getCurrentMainMapType();
-            if (mapOverlayType == MapProperties.MAP_OVERLAY_TYPE_AUTO)
+            if (mapOverlayType == MapOverlay.AUTO)
             {
                 gMap.setOnCameraChangeListener(this);
                 needPointsOverlay = true;
@@ -279,22 +283,32 @@ public class RMBTMapFragment extends MapFragment implements OnClickListener, OnC
             else
             {
                 gMap.setOnCameraChangeListener(null);
-                if (mapOverlayType == MapProperties.MAP_OVERLAY_TYPE_HEATMAP) {
+                switch (mapOverlayType) {
+                case HEATMAP:
                 	needPointsOverlay = false;
                     needShapesOverlay = false;
                     needHeatmapOverlay = true;
-                }
-                else if (mapOverlayType == MapProperties.MAP_OVERLAY_TYPE_POINTS) {
+                	break;
+
+                case POINTS:
                     needPointsOverlay = true;
                     needShapesOverlay = false;
                     needHeatmapOverlay = false;
-                }
-                else if (mapOverlayType == MapProperties.MAP_OVERLAY_TYPE_SHAPES) {
+                	break;
+
+                case REGIONS:
+                case SETTLEMENTS:
+                case MUNICIPALITY:
+                case WHITESPOTS:
                 	gMap.setOnCameraChangeListener(this);
                     needPointsOverlay = true;	
                 	needShapesOverlay = true;
                 	needHeatmapOverlay = false;
-                }	
+                	break;
+
+                default:
+                	break;
+                }
             }
             
             if (!options.isEnableOverlay()) {
@@ -311,7 +325,7 @@ public class RMBTMapFragment extends MapFragment implements OnClickListener, OnC
             {
                 final RMBTTileSourceProvider heatmapProvider = new RMBTTileSourceProvider(protocol, host, port, MapProperties.TILE_SIZE);
                 heatmapProvider.setOptionMap(mapOptions);
-                heatmapProvider.setPath(MapProperties.HEATMAP_PATH);
+                heatmapProvider.setPath(mapOverlayType.getPath());
                 heatmapOverlay = gMap.addTileOverlay(new TileOverlayOptions().tileProvider(heatmapProvider).zIndex(100000000));
             }
             
@@ -319,7 +333,7 @@ public class RMBTMapFragment extends MapFragment implements OnClickListener, OnC
             {
                 final RMBTTileSourceProvider shapesProvider = new RMBTTileSourceProvider(protocol, host, port, MapProperties.TILE_SIZE);
                 shapesProvider.setOptionMap(mapOptions);
-                shapesProvider.setPath(MapProperties.SHAPES_PATH);
+                shapesProvider.setPath(mapOverlayType.getPath());
                 shapesOverlay = gMap.addTileOverlay(new TileOverlayOptions().tileProvider(shapesProvider).zIndex(100000000));
             }
             
@@ -327,10 +341,10 @@ public class RMBTMapFragment extends MapFragment implements OnClickListener, OnC
             {
                 final RMBTTileSourceProvider pointsProvider = new RMBTTileSourceProvider(protocol, host, port, MapProperties.TILE_SIZE * 2);
                 pointsProvider.setOptionMap(mapOptions);
-                pointsProvider.setPath(MapProperties.POINTS_PATH);
+                pointsProvider.setPath(mapOverlayType.getPath());
                 pointsOverlay = gMap.addTileOverlay(new TileOverlayOptions().tileProvider(pointsProvider).zIndex(200000000));
                 
-                if ((mapOverlayType == MapProperties.MAP_OVERLAY_TYPE_AUTO) || (mapOverlayType == MapProperties.MAP_OVERLAY_TYPE_SHAPES))
+                if ((mapOverlayType == MapOverlay.AUTO) || (mapOverlayType.isShapeLayer()))
                     onCameraChange(gMap.getCameraPosition());
             }
         }

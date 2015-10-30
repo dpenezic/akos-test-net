@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -146,27 +146,27 @@ public final class Helperfunctions
             direction = res.getString(R.string.test_location_dir_e);
         else
             direction = res.getString(R.string.test_location_dir_w);
-        return String.format("%s %s°%.3f'", direction, split[0].replace("-", ""), min);
+        return String.format(Locale.US, "%s %s°%.3f'", direction, split[0].replace("-", ""), min);
     }
     
     public static String convertLocationSpeed(final Resources res, final boolean hasspeed, final float speed)
     {   
-        final String unit;
         if ((!hasspeed) || (speed <= 1.0)) // ignore speed < 3.6km
             return "";
         else 
-            return String.format ("%.0f %s", speed*3.6,res.getString(R.string.test_location_km_h));
+            return String.format (Locale.US, "%.0f %s", speed*3.6,res.getString(R.string.test_location_km_h));
     }
     
     public static String convertLocationAccuracy(final Resources res, final boolean hasaccuracy, final float accuracy, final int satellites)
     {   
+    	
         if ((!hasaccuracy)  || (accuracy < 0)) // ignore negative or null
             return "";
         else 
         	if (satellites > 0)
-           		return String.format ("+/-%.0f %s (%d %s)", accuracy,res.getString(R.string.test_location_m),satellites,res.getString(R.string.test_location_sat));
+           		return String.format (Locale.US, "+/-%.0f %s (%d %s)", accuracy,res.getString(R.string.test_location_m),satellites,res.getString(R.string.test_location_sat));
         	else
-        		return String.format ("+/-%.0f %s", accuracy,res.getString(R.string.test_location_m));
+        		return String.format (Locale.US, "+/-%.0f %s", accuracy,res.getString(R.string.test_location_m));
     }
     
     public static String convertLocationAltitude(final Resources res, final boolean hasaltitude, final double altitude)
@@ -174,7 +174,7 @@ public final class Helperfunctions
         if ((!hasaltitude)  || (altitude < 0)) // ignore negative or null
             return "";
         else
-            return String.format ("%.0f %s", altitude,res.getString(R.string.test_location_m));
+            return String.format (Locale.US, "%.0f %s", altitude,res.getString(R.string.test_location_m));
     }
     
     public static String convertLocationProvider(final Resources res, final String provider)
@@ -202,7 +202,7 @@ public final class Helperfunctions
         if (age < 1000) // < 1s
             return "< 1s";
         else
-            return String.format ("%d s", age/1000);
+            return String.format (Locale.US, "%d s", age/1000);
     }
     
     public static String getNetworkTypeName(final int type)
@@ -289,6 +289,8 @@ public final class Helperfunctions
         case ABORTED:
             return res.getString(R.string.test_bottom_test_status_aborted);
             
+		default:
+			break;
         }
         return null;
     }
@@ -343,7 +345,7 @@ public final class Helperfunctions
      * @param classification
      * @return
      */
-    public static int getClassificationColor(final int classification)
+    public static int getClassificationImage(final int classification)
     {
         switch (classification)
         {
@@ -357,6 +359,23 @@ public final class Helperfunctions
             return R.drawable.traffic_lights_green;
         default:
             return R.drawable.traffic_lights_none;
+        }
+    }
+    
+    public static int getClassificationColor(final int classification)
+    {
+        switch (classification)
+        {
+        case 0:
+            return R.color.classification_grey;
+        case 1:
+            return R.color.classification_red;
+        case 2:
+            return R.color.classification_yellow;
+        case 3:
+            return R.color.classification_green;
+        default:
+            return R.color.classification_none;
         }
     }
     

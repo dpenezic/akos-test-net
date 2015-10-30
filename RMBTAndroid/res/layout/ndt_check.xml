@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Copyright 2013-2014 alladin-IT GmbH
+  Copyright 2013-2015 alladin-IT GmbH
   
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@
     android:paddingTop="8dp" >
 
     <TextView
+        android:id="@+id/check_fragment_title"
         style="@style/blockHeader"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -40,18 +41,11 @@
         android:layout_weight="1"
         android:background="@color/transparent" >
 
-        <!-- 
-        <LinearLayout
+        <WebView
+            android:id="@+id/ndtInfoWebView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical" >
-             -->
-
-            <WebView
-                android:id="@+id/ndtInfoWebView"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@color/transparent" />
+            android:background="@color/transparent" />
     </ScrollView>
 
     <CheckBox
@@ -64,51 +58,20 @@
         android:text="@string/terms_ndt_accept_text"
         android:textStyle="bold" />
 
-    <!-- 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@drawable/list_selector"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingTop="3dp" >
-
-        <TextView
-            style="@style/textSmallDark"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="10dp"
-            android:layout_weight="0.9"
-            android:text="@string/terms_ndt_accept_text"
-            android:textStyle="bold" />
-
-        <CheckBox
-            android:id="@+id/ndtCheckBox"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="5dp"
-            android:layout_marginRight="5dp"
-            android:layout_weight="0.1"
-            android:text="@string/terms_ndt_accept_text"
-            style="@style/textSmallDark"
-            />
-    </LinearLayout>
-     -->
-
     <LinearLayout
         android:id="@+id/termsNdtButtonWrapper"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="0dp"
-        android:orientation="horizontal"
-        android:baselineAligned="false" >
+        android:baselineAligned="false"
+        android:orientation="horizontal" >
 
         <RelativeLayout
-            android:padding="5dp"
-            android:layout_weight="1"
             android:id="@+id/termsNdtButtonBack"
             android:layout_width="0dp"
-            android:layout_height="wrap_content" >
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:padding="5dp" >
 
             <Button
                 android:id="@+id/termsNdtBackButton"
@@ -116,18 +79,17 @@
                 android:layout_height="wrap_content"
                 android:layout_alignParentTop="true"
                 android:layout_centerHorizontal="true"
+                android:background="@drawable/button_selector"
                 android:text="@string/terms_ndt_back_button"
-                android:textColor="@android:color/white"
-                android:background="@drawable/button_selector" />
-
+                android:textColor="@android:color/white" />
         </RelativeLayout>
 
         <RelativeLayout
-            android:padding="5dp"
-            android:layout_weight="1"
-            android:layout_width="0dp"
             android:id="@+id/termsNdtButtonAccept"
-            android:layout_height="wrap_content" >
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:padding="5dp" >
 
             <Button
                 android:id="@+id/termsNdtAcceptButton"
@@ -135,10 +97,10 @@
                 android:layout_height="wrap_content"
                 android:layout_alignParentTop="true"
                 android:layout_centerHorizontal="true"
+                android:background="@drawable/button_selector"
                 android:enabled="false"
                 android:text="@string/terms_ndt_accept_button"
-                android:textColor="@drawable/button_selector_color"
-                android:background="@drawable/button_selector" />
+                android:textColor="@drawable/button_selector_color" />
         </RelativeLayout>
     </LinearLayout>
 

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,8 +25,8 @@ import at.alladin.rmbt.android.util.net.InterfaceTrafficGatherer.TrafficClassifi
 
 public class InfoCollector implements Serializable {
 	public static enum InfoCollectorType {
-		SIGNAL, SIGNAL_RSRQ, NETWORK_FAMILY, NETWORK_TYPE, NETWORK_NAME, LOCATION, IP, UL_TRAFFIC, DL_TRAFFIC, CONTROL_SERVER_CONNECTION, 
-		CAPTIVE_PORTAL_STATUS, CONNECTION_STATUS,
+		SIGNAL, SIGNAL_RSRQ, NETWORK_FAMILY, NETWORK_TYPE, NETWORK_NAME, LOCATION, IPV4, IPV6, UL_TRAFFIC, DL_TRAFFIC, CONTROL_SERVER_CONNECTION, 
+		CAPTIVE_PORTAL_STATUS, CONNECTION_STATUS, CPU, MEMORY
 	}
 	public static interface OnInformationChangedListener {
 		void onInformationChanged(InfoCollectorType type, Object oldValue, Object newValue);
@@ -45,10 +45,13 @@ public class InfoCollector implements Serializable {
 	private boolean isRsrqSignal = false;
 	private boolean hasControlServerConnection;
 	private boolean captivePortalFound = false;
+	private float cpuUsage = 0f;
+	private float memUsage = 0f;
 	private String networkTypeString;
 	private String networkFamily;
 	private String networkName;
-	private String ip;
+	private String ipv4;
+	private String ipv6;
 	private TrafficClassificationEnum ulTraffic;
 	private TrafficClassificationEnum dlTraffic;
 	private Location location;
@@ -140,17 +143,50 @@ public class InfoCollector implements Serializable {
 		this.location = location;
 	}
 	
-	public void setIp(String ip) {
-		if (this.ip != null && listener != null && !this.ip.equals(ip) || (this.ip == null && ip != null)) {
-			dispatchInfoChangedEvent(InfoCollectorType.IP, this.ip, ip);
+	public void setIpv4(String ip) {
+		if (this.ipv4 != null && listener != null && !this.ipv4.equals(ip) || (this.ipv4 == null && ip != null)) {
+			dispatchInfoChangedEvent(InfoCollectorType.IPV4, this.ipv4, ip);
 		}
-		this.ip = ip;		
+		this.ipv4 = ip;		
+	}
+
+	public void setIpv6(String ip) {
+		if (this.ipv6 != null && listener != null && !this.ipv6.equals(ip) || (this.ipv6 == null && ip != null)) {
+			dispatchInfoChangedEvent(InfoCollectorType.IPV6, this.ipv6, ip);
+		}
+		this.ipv6 = ip;		
 	}
 	
-	public String getIp() {
-		return ip;
+	public float getCpuUsage() {
+		return cpuUsage;
 	}
-	
+
+	public void setCpuUsage(float cpuUsage) {
+		if (listener != null && this.cpuUsage != cpuUsage) {
+			dispatchInfoChangedEvent(InfoCollectorType.CPU, this.cpuUsage, cpuUsage);
+		}	
+		this.cpuUsage = cpuUsage;
+	}
+
+	public float getMemUsage() {
+		return memUsage;
+	}
+
+	public void setMemUsage(float memUsage) {
+		if (listener != null && this.memUsage != memUsage) {
+			dispatchInfoChangedEvent(InfoCollectorType.MEMORY, this.memUsage, memUsage);
+		}	
+		this.memUsage = memUsage;
+	}
+
+	public String getIpv4() {
+		return ipv4;
+	}
+
+	public String getIpv6() {
+		return ipv6;
+	}
+
 	public TrafficClassificationEnum getUlTraffic() {
 		return ulTraffic;
 	}
@@ -216,7 +252,7 @@ public class InfoCollector implements Serializable {
 	 * @param newValue
 	 */
 	public void dispatchInfoChangedEvent(InfoCollectorType type, Object oldValue, Object newValue) {
-		//Log.d(DEBUG_TAG, "Dispatching Event: " + type + ", Listeners: " + listener.size());
+		Log.d(DEBUG_TAG, "Dispatching Event: " + type + ", Listeners: " + listener.size());
 		for (OnInformationChangedListener l : listener) {
 			if (l != null) {
 				l.onInformationChanged(type, oldValue, newValue);
@@ -229,13 +265,15 @@ public class InfoCollector implements Serializable {
 	 */
 	public void refresh() {
 		dispatchInfoChangedEvent(InfoCollectorType.LOCATION, null, getLocation());
-		dispatchInfoChangedEvent(InfoCollectorType.IP, null, getIp());
+		dispatchInfoChangedEvent(InfoCollectorType.IPV4, null, getIpv4());
+		dispatchInfoChangedEvent(InfoCollectorType.IPV6, null, getIpv6());
 	}
 	
 	/**
 	 * 
 	 */
 	public void refreshIpAndAntenna() {
-		dispatchInfoChangedEvent(InfoCollectorType.IP, null, getIp());	
+		dispatchInfoChangedEvent(InfoCollectorType.IPV4, null, getIpv4());
+		dispatchInfoChangedEvent(InfoCollectorType.IPV6, null, getIpv6());
 	}
 }

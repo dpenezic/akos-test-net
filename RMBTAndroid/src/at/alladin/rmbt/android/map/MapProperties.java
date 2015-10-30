@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
  ******************************************************************************/
 package at.alladin.rmbt.android.map;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import com.google.android.gms.maps.model.LatLng;
@@ -35,7 +36,7 @@ public interface MapProperties
     /**
 	 * 
 	 */
-    public static final LatLng DEFAULT_MAP_CENTER = new LatLng(48.20855, 16.37312);
+    public static final LatLng DEFAULT_MAP_CENTER = new LatLng(46.049053, 14.501973);
     
     public static final float DEFAULT_MAP_ZOOM = 10.5f;
     
@@ -51,21 +52,6 @@ public interface MapProperties
     // http://www.openstreetmap.org/?minlon=9.45&minlat=46.355&maxlon=17.20&maxlat=49.00&box=yes
     // public static final BoundingBoxE6 BOUNDING_BOX = new BoundingBoxE6(49,
     // 17.2, 46.355, 9.45);
-    
-    /**
-	 * 
-	 */
-    public static final String HEATMAP_PATH = "/RMBTMapServer/tiles/heatmap";
-    
-    /**
-     * 
-     */
-    public static final String SHAPES_PATH = "/RMBTMapServer/tiles/shapes";
-    
-    /**
-	 * 
-	 */
-    public static final String POINTS_PATH = "/RMBTMapServer/tiles/points";
     
     /**
      * 
@@ -101,32 +87,92 @@ public interface MapProperties
      * 
      */
     public static final int MAP_AUTO_SWITCH_VALUE = 12;
+
     
+    interface ParameterizableMapOverlay {
+    	Map<String, String> getAdditionalParameters();
+    }
     /**
      * 
+     * @author lb
+     *
      */
-    public static final String MAP_AUTO_VALUE = "AUTO";
-    
-    /**
-	 * 
-	 */
-    public static final String MAP_HEATMAP_VALUE = "HEATMAP";
-    
-    /**
-	 * 
-	 */
-    public static final String MAP_POINTS_VALUE = "POINTS";
-    
-    /**
-	 * 
-	 */
-    public static final String MAP_SHAPES_VALUE = "SHAPES";
-    
-    
-    public static final int MAP_OVERLAY_TYPE_AUTO = 1;
-    public static final int MAP_OVERLAY_TYPE_HEATMAP = 2;
-    public static final int MAP_OVERLAY_TYPE_POINTS = 3;
-    public static final int MAP_OVERLAY_TYPE_SHAPES = 4;
+    public enum MapOverlay implements ParameterizableMapOverlay {
+    	AUTO,
+    	HEATMAP("/RMBTMapServer/tiles/heatmap"),
+    	POINTS("/RMBTMapServer/tiles/points"),
+    	REGIONS("/RMBTMapServer/tiles/shapes", true) {
+    		@Override
+    		public Map<String, String> getAdditionalParameters() {
+    			final Map<String, String> map = super.getAdditionalParameters();
+    			map.put("shapetype", "regions");
+    			return map;
+    		}
+    	},
+    	MUNICIPALITY("/RMBTMapServer/tiles/shapes", true) {
+    		@Override
+    		public Map<String, String> getAdditionalParameters() {
+    			final Map<String, String> map = super.getAdditionalParameters();
+    			map.put("shapetype", "municipality");
+    			return map;
+    		}
+    	},
+    	SETTLEMENTS("/RMBTMapServer/tiles/shapes", true) {
+    		@Override
+    		public Map<String, String> getAdditionalParameters() {
+    			final Map<String, String> map = super.getAdditionalParameters();
+    			map.put("shapetype", "settlements");
+    			return map;
+    		}
+    	},
+    	WHITESPOTS("/RMBTMapServer/tiles/shapes", true) {
+    		@Override
+    		public Map<String, String> getAdditionalParameters() {
+    			final Map<String, String> map = super.getAdditionalParameters();
+    			map.put("shapetype", "whitespots");
+    			return map;
+    		}
+    	};
+    	
+    	protected final String path;
+    	protected final boolean isShapeLayer;
+    	
+    	MapOverlay() {
+    		this("", false);
+		}
+
+    	MapOverlay(final String path) {
+    		this(path, false);
+		}
+
+    	MapOverlay(final String path, final boolean isShapeLayer) {
+    		this.path = path;
+    		this.isShapeLayer = isShapeLayer;
+		}
+
+		public String getPath() {
+			return path;
+		}
+		
+		public boolean isShapeLayer() {
+			return isShapeLayer;
+		}
+		
+		@Override
+		public Map<String, String> getAdditionalParameters() {
+			return new HashMap<String, String>();
+		}
+		
+		public static MapOverlay getByPath(final String path) {
+			for (final MapOverlay o : MapOverlay.values()) {
+				if (o.getPath().equals(path)) {
+					return o;
+				}
+			}
+			
+			return null;
+		}
+    }
     
     /**
      * 

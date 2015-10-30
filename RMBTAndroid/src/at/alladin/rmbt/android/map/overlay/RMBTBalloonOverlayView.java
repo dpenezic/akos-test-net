@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -158,7 +158,7 @@ public class RMBTBalloonOverlayView extends View
                         // itemClassification.set setGravity(Gravity.LEFT);
                         
                         itemClassification.setImageDrawable(getResources().getDrawable(
-                                Helperfunctions.getClassificationColor(singleItem.getInt("classification"))));
+                                Helperfunctions.getClassificationImage(singleItem.getInt("classification"))));
                         
                         measurememtItemLayout.addView(itemClassification);
                         

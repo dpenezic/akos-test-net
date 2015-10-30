@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import at.alladin.rmbt.android.main.RMBTMainActivity;
 import at.alladin.rmbt.android.map.MapListEntry;
 import at.alladin.rmbt.android.map.MapListSection;
 import at.alladin.rmbt.android.map.MapProperties;
+import at.alladin.rmbt.android.map.MapProperties.MapOverlay;
 
 public class GetMapOptionsInfoTask extends AsyncTask<Void, Void, JSONObject>
 {
@@ -198,16 +199,25 @@ public class GetMapOptionsInfoTask extends AsyncTask<Void, Void, JSONObject>
                             activity.getString(R.string.map_overlay_header), Arrays.asList(
                                     new MapListEntry(activity.getString(R.string.map_overlay_auto_title), activity
                                             .getString(R.string.map_overlay_auto_summary), true,
-                                            MapProperties.MAP_OVERLAY_KEY, MapProperties.MAP_AUTO_VALUE, true),
+                                            MapProperties.MAP_OVERLAY_KEY, MapOverlay.AUTO.name(), true),
                                     new MapListEntry(activity.getString(R.string.map_overlay_heatmap_title), activity
                                             .getString(R.string.map_overlay_heatmap_summary),
-                                            MapProperties.MAP_OVERLAY_KEY, MapProperties.MAP_HEATMAP_VALUE),
+                                            MapProperties.MAP_OVERLAY_KEY, MapOverlay.HEATMAP.name()),
                                     new MapListEntry(activity.getString(R.string.map_overlay_points_title), activity
                                             .getString(R.string.map_overlay_points_summary), MapProperties.MAP_OVERLAY_KEY,
-                                            MapProperties.MAP_POINTS_VALUE),
-                                    new MapListEntry(activity.getString(R.string.map_overlay_shapes_title), activity
-                                            .getString(R.string.map_overlay_shapes_summary), MapProperties.MAP_OVERLAY_KEY,
-                                            MapProperties.MAP_SHAPES_VALUE)
+                                            MapOverlay.POINTS.name()),
+                                    new MapListEntry(activity.getString(R.string.map_overlay_regions_title), activity
+                                            .getString(R.string.map_overlay_regions_summary), MapProperties.MAP_OVERLAY_KEY,
+                                            MapOverlay.REGIONS.name()),
+                                    new MapListEntry(activity.getString(R.string.map_overlay_municipality_title), activity
+                                    		.getString(R.string.map_overlay_municipality_summary), MapProperties.MAP_OVERLAY_KEY, 
+                                    		MapOverlay.MUNICIPALITY.name()),
+                                    new MapListEntry(activity.getString(R.string.map_overlay_settlements_title), activity
+                                            .getString(R.string.map_overlay_settlements_summary), MapProperties.MAP_OVERLAY_KEY,
+                                            MapOverlay.SETTLEMENTS.name()),
+                                    new MapListEntry(activity.getString(R.string.map_overlay_whitespots_title), activity
+                                            .getString(R.string.map_overlay_whitespots_summary), MapProperties.MAP_OVERLAY_KEY,
+                                            MapOverlay.WHITESPOTS.name())                                           
                                     ));
                     
                     mapFilterListSectionList.add(overlaySection);
@@ -290,29 +300,7 @@ public class GetMapOptionsInfoTask extends AsyncTask<Void, Void, JSONObject>
                 final MapListEntry entry = mapListSectionList.get(0).getMapListEntryList().get(0);
                 
                 activity.setCurrentMapType(entry);
-                
-                // map filter
-                
-                
-                // unnecessary ?
-//                for (final MapListSection section : mapFilterListSectionListHash)
-//                {
-//                    
-//                    final MapListEntry checkedEntry = section.getCheckedMapListEntry();
-//                    
-//                    if (checkedEntry.getKey() != null && checkedEntry.getValue() != null)
-//                        activity.getCurrentMapOptions().put(checkedEntry.getKey(), checkedEntry.getValue());
-//                    
-//                    activity.getCurrentMapOptionTitles().put(checkedEntry.getKey(),
-//                            checkedEntry.getSection().getTitle() + ": " + checkedEntry.getTitle());
-//                }
-                
-//                System.out.println(activity.getCurrentMapOptions());
-//                System.out.println(activity.getCurrentMapOptionTitles());
-                
-                // //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                // //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                
+                                
                 activity.setMapTypeListSectionList(mapListSectionList);
                 activity.setMapFilterListSectionListMap(mapFilterListSectionListHash);
                 

@@ -48,10 +48,10 @@ import java.nio.file.StandardCopyOption;
 
 public class ExportResource extends ServerResource
 {
-    private static final String FILENAME_CSV = "netztest-opendata-%YEAR%-%MONTH%.csv";
-    private static final String FILENAME_ZIP = "netztest-opendata-%YEAR%-%MONTH%.zip";
+    private static final String FILENAME_CSV = "opendata-%YEAR%-%MONTH%.csv";
+    private static final String FILENAME_ZIP = "opendata-%YEAR%-%MONTH%.zip";
     private static final String FILENAME_CSV_CURRENT = "opendata.csv";
-    private static final String FILENAME_ZIP_CURRENT = "netztest-opendata.zip";
+    private static final String FILENAME_ZIP_CURRENT = "opendata.zip";
     
     private static final CSVFormat csvFormat = CSVFormat.RFC4180;
     private static final boolean zip = true;
@@ -129,9 +129,9 @@ public class ExportResource extends ServerResource
         
         
         final String sql = "SELECT" +
-                " ('P' || t.open_uuid) open_uuid," +
+//                " ('P' || t.open_uuid) open_uuid," + // deactivated for Open-RMBT in #66
                 " ('O' || t.open_test_uuid) open_test_uuid," + 
-                " to_char(t.time AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI') \"time\"," +
+                " to_char(t.time AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS') \"time_utc\"," +
                 " nt.group_name cat_technology," +
                 " nt.name network_type," +
                 " (CASE WHEN (t.geo_accuracy < ?) AND (t.geo_provider != 'manual') AND (t.geo_provider != 'geocoder') THEN" +
@@ -155,27 +155,32 @@ public class ExportResource extends ServerResource
                 " WHEN (t.geo_accuracy < 100) AND ((t.geo_provider = 'manual') OR (t.geo_provider = 'geocoder')) THEN 100" + // limit accuracy to 100m
                 " WHEN (t.geo_accuracy < ?) THEN t.geo_accuracy" +
                 " ELSE null END) loc_accuracy, " +
+                " data->>'region' region," +
+                " data->>'municipality' municipality," +
+                " data->>'settlement' settlement," +
+                " data->>'whitespace' whitespot," +
                 " (CASE WHEN (t.zip_code < 1000 OR t.zip_code > 9999) THEN null ELSE t.zip_code END) zip_code," +
                 " t.speed_download download_kbit," +
                 " t.speed_upload upload_kbit," +
-                " (t.ping_shortest::float / 1000000) ping_ms," +
+                " (t.ping_median::float / 1000000) ping_ms," +
                 " t.lte_rsrp," +
                 " ts.name server_name," +
                 " duration test_duration," +
                 " num_threads," +
-                " t.plattform platform," +
-                " COALESCE(adm.fullname, t.model) model," +
+                " (CASE WHEN publish_public_data THEN t.plattform ELSE NULL END) platform," +
+                " (CASE WHEN publish_public_data THEN COALESCE(adm.fullname, t.model) ELSE NULL END) model," +
                 " client_software_version client_version," +
                 " network_operator network_mcc_mnc," +
                 " network_operator_name network_name," +
                 " network_sim_operator sim_mcc_mnc," +
                 " nat_type," +
                 " public_ip_asn asn," +
-                " client_public_ip_anonymized ip_anonym," +
+                " (CASE WHEN publish_public_data THEN client_public_ip_anonymized ELSE NULL END) ip_anonym," +
                 " (ndt.s2cspd*1000)::int ndt_download_kbit," +
                 " (ndt.c2sspd*1000)::int ndt_upload_kbit," +
                 " COALESCE(t.implausible, false) implausible," +
-                " t.signal_strength" +
+                " t.signal_strength, " +
+                " ((EXTRACT (EPOCH FROM (t.timestamp - t.time))) * 1000) speed_test_duration_ms " +
                 " FROM test t" +
                 " LEFT JOIN network_type nt ON nt.uid=t.network_type" +
                 " LEFT JOIN device_map adm ON adm.codename=t.model" +
@@ -196,7 +201,7 @@ public class ExportResource extends ServerResource
             ps = conn.prepareStatement(sql);
             
             //insert filter for accuracy
-            double accuracy = Double.parseDouble(settings.getString("RMBT_GEO_ACCURACY_DETAIL_LIMIT"));
+            double accuracy = Double.parseDouble(getSetting("rmbt_geo_accuracy_detail_limit"));
             ps.setDouble(1, accuracy);
             ps.setDouble(2, accuracy);
             ps.setDouble(3, accuracy);
@@ -262,7 +267,7 @@ public class ExportResource extends ServerResource
                 if (zip)
                 {
                     final ZipOutputStream zos = new ZipOutputStream(outf);
-                    final ZipEntry zeLicense = new ZipEntry("LIZENZ.txt");
+                    final ZipEntry zeLicense = new ZipEntry("LICENSE.txt");
                     zos.putNextEntry(zeLicense);
                     final InputStream licenseIS = getClass().getResourceAsStream("DATA_LICENSE.txt");
                     IOUtils.copy(licenseIS, zos);

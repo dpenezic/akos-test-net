@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,8 +49,8 @@ public class Gauge extends Drawable
     final Paint paint = new Paint();
     final Paint erasePaint;
     final RectF ovalRect;
-    final float startAngle;
-    final float maxAngle;
+    float startAngle;
+    float maxAngle;
     
     final Format formatter = NumberFormat.getPercentInstance();
     
@@ -165,7 +165,23 @@ public class Gauge extends Drawable
         invalidateSelf();
     }
     
-    @Override
+    public float getStartAngle() {
+		return startAngle;
+	}
+
+	public void setStartAngle(float startAngle) {
+		this.startAngle = startAngle;
+	}
+
+	public float getMaxAngle() {
+		return maxAngle;
+	}
+
+	public void setMaxAngle(float maxAngle) {
+		this.maxAngle = maxAngle;
+	}
+
+	@Override
     public void setColorFilter(final ColorFilter cf)
     {
         paint.setColorFilter(cf);

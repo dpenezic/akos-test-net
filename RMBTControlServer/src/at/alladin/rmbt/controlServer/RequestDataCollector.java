@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,7 +63,7 @@ public class RequestDataCollector extends ServerResource
         answer.put("os", agent.getOperatingSystem().getFamilyName());
         answer.put("family", agent.getFamily());
         answer.put("agent", uaString);
-        answer.put("url", getURL().toString());
+        //answer.put("url", getURL().toString());
         
         final List<Preference<Language>> acceptedLanguages = clientInfo.getAcceptedLanguages();
         final JSONArray languages = new JSONArray();

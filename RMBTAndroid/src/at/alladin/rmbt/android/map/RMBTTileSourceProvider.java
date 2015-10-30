@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import java.util.Locale;
 import java.util.Map;
 
 import android.util.Log;
+import at.alladin.rmbt.android.map.MapProperties.MapOverlay;
 
 import com.google.android.gms.maps.model.UrlTileProvider;
 
@@ -66,7 +67,7 @@ public class RMBTTileSourceProvider extends UrlTileProvider
         
         this.tileSize = tileSize;
         
-        path = MapProperties.HEATMAP_PATH; // heatmap is default
+        path = MapOverlay.HEATMAP.getPath(); // heatmap is default
     }
     
     @Override
@@ -101,7 +102,9 @@ public class RMBTTileSourceProvider extends UrlTileProvider
      */
     public void setPath(final String path)
     {
-        if (!MapProperties.HEATMAP_PATH.equals(path) && !MapProperties.POINTS_PATH.equals(path) && !MapProperties.SHAPES_PATH.equals(path))
+    	final MapOverlay mapOverlay = MapOverlay.getByPath(path);
+        if (mapOverlay == null || (!MapOverlay.HEATMAP.equals(mapOverlay) && !MapOverlay.POINTS.equals(mapOverlay) 
+        		&& !mapOverlay.isShapeLayer()))
             return;
         
         this.path = path;

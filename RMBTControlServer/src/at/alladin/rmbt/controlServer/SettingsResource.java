@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,8 @@ import org.restlet.resource.Post;
 import org.restlet.util.Series;
 
 import at.alladin.rmbt.db.Client;
+import at.alladin.rmbt.db.QoSTestTypeDesc;
+import at.alladin.rmbt.db.dao.QoSTestTypeDescDao;
 import at.alladin.rmbt.shared.Helperfunctions;
 import at.alladin.rmbt.shared.ResourceManager;
 import at.alladin.rmbt.shared.RevisionHelper;
@@ -51,7 +53,7 @@ public class SettingsResource extends ServerResource
      */
     @Post("json")
     public String request(final String entity)
-    {
+    {   long startTime = System.currentTimeMillis();
         addAllowOrigin();
         
         JSONObject request = null;
@@ -60,7 +62,8 @@ public class SettingsResource extends ServerResource
         final JSONObject answer = new JSONObject();
         String answerString;
         
-        System.out.println(MessageFormat.format(labels.getString("NEW_SETTINGS_REQUEST"), getIP()));
+        final String clientIpRaw = getIP();
+        System.out.println(MessageFormat.format(labels.getString("NEW_SETTINGS_REQUEST"), clientIpRaw));
         
         if (entity != null && !entity.isEmpty())
             // try parse the string to a JSON object
@@ -246,11 +249,26 @@ public class SettingsResource extends ServerResource
                         jsonControlServerVersion.put("control_server_version",  RevisionHelper.getVerboseRevision());
                         jsonItem.put("versions", jsonControlServerVersion);
                         
-                        settingsList.put(jsonItem);
+                        try {
+                            final Locale locale = new Locale(lang);
+                            final QoSTestTypeDescDao testTypeDao = new QoSTestTypeDescDao(conn, locale);
+                            final JSONArray testTypeDescArray = new JSONArray();
+                            for (QoSTestTypeDesc desc : testTypeDao.getAll()) {
+                            	JSONObject json = new JSONObject();
+                        		json.put("test_type", desc.getTestType().name());
+                        		json.put("name", desc.getName());
+                            	testTypeDescArray.put(json);
+                            }
+                            jsonItem.put("qostesttype_desc", testTypeDescArray);
+                        } catch (SQLException e) {
+                        	errorList.addError("ERROR_DB_CONNECTION");
+						}
                         
+                        settingsList.put(jsonItem);
                         answer.put("settings", settingsList);
                         
-                        System.out.println(settingsList);
+                        //debug: print settings response (JSON)
+                        //System.out.println(settingsList);
                         
                     }
                     else
@@ -289,6 +307,14 @@ public class SettingsResource extends ServerResource
 //            e.printStackTrace();
 //        }
         
+        
+        answerString = answer.toString();
+        long elapsedTime = System.currentTimeMillis() - startTime;
+        System.out.println(MessageFormat.format(labels.getString("NEW_SETTINGS_REQUEST_SUCCESS"), clientIpRaw, Long.toString(elapsedTime)));
+        
+
+        
+        
         return answerString;
     }
     
@@ -314,7 +340,7 @@ public class SettingsResource extends ServerResource
                 .prepareStatement("SELECT DISTINCT COALESCE(adm.fullname, t.model) model"
                         + " FROM test t"
                         + " LEFT JOIN device_map adm ON adm.codename=t.model"
-                        + " WHERE (t.client_id = ? OR t.client_id IN (SELECT uid FROM client WHERE sync_group_id = ?)) AND t.deleted = false AND t.implausible = false AND t.status = 'FINISHED' ORDER BY model ASC");
+                        + " WHERE (t.client_id IN (SELECT ? UNION SELECT uid FROM client WHERE sync_group_id = ? )) AND t.deleted = false AND t.implausible = false AND t.status = 'FINISHED' ORDER BY model ASC");
         
         st.setLong(1, client.getUid());
         st.setInt(2, client.getSync_group_id());

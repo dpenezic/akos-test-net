@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Copyright 2013-2014 alladin-IT GmbH
+  Copyright 2013-2015 alladin-IT GmbH
   
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -22,6 +22,12 @@
                 android:key="ndt"
                 android:title="@string/preferences_ndt" 
                 android:summary="@string/preferences_ndt_sum"
+                android:defaultValue="false"
+                android:layout="@layout/preferences_item"/>
+
+            <CheckBoxPreference
+                android:key="information_commissioner"
+                android:title="@string/preferences_ic" 
                 android:defaultValue="false"
                 android:layout="@layout/preferences_item"/>
             

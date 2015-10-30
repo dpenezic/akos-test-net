@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ public class HttpProxyResult extends AbstractResult<HttpProxyResult> {
 	private String range;
 
 	@HstoreKey("http_result_length")
-	private String length;
+	private Long length;
 	
 	@HstoreKey("http_result_header")
 	private String header;
@@ -41,16 +41,19 @@ public class HttpProxyResult extends AbstractResult<HttpProxyResult> {
 	
 	@HstoreKey("http_result_hash")
 	private String hash;
+	
+	@HstoreKey("http_result_duration")
+	private Long duration;
 
 	public HttpProxyResult() {
 		
 	}
 	
-	public String getLength() {
+	public Long getLength() {
 		return length;
 	}
 
-	public void setLength(String length) {
+	public void setLength(Long length) {
 		this.length = length;
 	}
 
@@ -77,7 +80,6 @@ public class HttpProxyResult extends AbstractResult<HttpProxyResult> {
 	public void setHash(String hash) {
 		this.hash = hash;
 	}
-
 	
 	public String getTarget() {
 		return target;
@@ -95,15 +97,20 @@ public class HttpProxyResult extends AbstractResult<HttpProxyResult> {
 		this.range = range;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * @see java.lang.Object#toString()
-	 */
+	public Long getDuration() {
+		return duration;
+	}
+
+	public void setDuration(Long duration) {
+		this.duration = duration;
+	}
+
 	@Override
 	public String toString() {
-		return "HttpProxyResult [length=" + length + ", header=" + header
-				+ ", status=" + status + ", hash=" + hash
-				+ ", getComparator()=" + getOperator() + ", getOnFailure()="
+		return "HttpProxyResult [target=" + target + ", range=" + range
+				+ ", length=" + length + ", header=" + header + ", status="
+				+ status + ", hash=" + hash + ", duration=" + duration
+				+ ", getOperator()=" + getOperator() + ", getOnFailure()="
 				+ getOnFailure() + ", getOnSuccess()=" + getOnSuccess() + "]";
 	}
 }

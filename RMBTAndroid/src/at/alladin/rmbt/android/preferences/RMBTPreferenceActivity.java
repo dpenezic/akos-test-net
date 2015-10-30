@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,13 +27,17 @@ import android.preference.Preference;
 import android.preference.PreferenceActivity;
 import android.view.MenuItem;
 import android.widget.ListView;
-import at.alladin.openrmbt.android.R;
+import at.alladin.rmbt.android.terms.RMBTCheckFragment.CheckType;
 import at.alladin.rmbt.android.terms.RMBTTermsActivity;
 import at.alladin.rmbt.android.util.ConfigHelper;
+
+import at.alladin.openrmbt.android.R;
 
 public class RMBTPreferenceActivity extends PreferenceActivity
 {
     protected static final int REQUEST_NDT_CHECK = 1;
+    protected static final int REQUEST_IC_CHECK = 2;
+    
     protected Method mLoadHeaders = null;
     protected Method mHasHeaders = null;
     
@@ -128,7 +132,32 @@ public class RMBTPreferenceActivity extends PreferenceActivity
                         {
                             cbp.setChecked(false);
                             final Intent intent = new Intent(getBaseContext(), RMBTTermsActivity.class);
+                            intent.putExtra(RMBTTermsActivity.EXTRA_KEY_CHECK_TYPE, CheckType.NDT.name());
                             startActivityForResult(intent, REQUEST_NDT_CHECK);
+                        }
+                    }
+                    return true;
+                }
+            });
+        }
+        
+        final Preference icPref = (Preference) findPreference("information_commissioner");
+        if (icPref != null)
+        {
+        	icPref.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+                @Override
+                public boolean onPreferenceClick(Preference preference)
+                {
+                    if (preference instanceof CheckBoxPreference)
+                    {
+                        final CheckBoxPreference cbp = (CheckBoxPreference) preference;
+                        
+                        if (cbp.isChecked())
+                        {
+                            cbp.setChecked(false);
+                            final Intent intent = new Intent(getBaseContext(), RMBTTermsActivity.class);
+                            intent.putExtra(RMBTTermsActivity.EXTRA_KEY_CHECK_TYPE, CheckType.INFORMATION_COMMISSIONER.name());
+                            startActivityForResult(intent, REQUEST_IC_CHECK);
                         }
                     }
                     return true;
@@ -161,6 +190,9 @@ public class RMBTPreferenceActivity extends PreferenceActivity
         if (requestCode == REQUEST_NDT_CHECK)
         {
             ((CheckBoxPreference) findPreference("ndt")).setChecked(ConfigHelper.isNDT(this));
+        }
+        else if (requestCode == REQUEST_IC_CHECK) {
+        	((CheckBoxPreference) findPreference("information_commissioner")).setChecked(ConfigHelper.isInformationCommissioner(this));
         }
     }
     

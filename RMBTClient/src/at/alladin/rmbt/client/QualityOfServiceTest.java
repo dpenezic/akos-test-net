@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,11 +32,14 @@ import at.alladin.rmbt.client.v2.task.AbstractQoSTask;
 import at.alladin.rmbt.client.v2.task.DnsTask;
 import at.alladin.rmbt.client.v2.task.HttpProxyTask;
 import at.alladin.rmbt.client.v2.task.NonTransparentProxyTask;
+import at.alladin.rmbt.client.v2.task.QoSControlConnection;
 import at.alladin.rmbt.client.v2.task.QoSTestEnum;
 import at.alladin.rmbt.client.v2.task.QoSTestErrorEnum;
 import at.alladin.rmbt.client.v2.task.TaskDesc;
 import at.alladin.rmbt.client.v2.task.TcpTask;
+import at.alladin.rmbt.client.v2.task.TracerouteTask;
 import at.alladin.rmbt.client.v2.task.UdpTask;
+import at.alladin.rmbt.client.v2.task.VoipTask;
 import at.alladin.rmbt.client.v2.task.WebsiteTask;
 import at.alladin.rmbt.client.v2.task.result.QoSResultCollector;
 import at.alladin.rmbt.client.v2.task.result.QoSTestResult;
@@ -67,6 +70,7 @@ public class QualityOfServiceTest implements Callable<QoSResultCollector> {
     
     final TreeMap<Integer, List<AbstractQoSTask>> concurrentTasks = new TreeMap<Integer, List<AbstractQoSTask>>();
     final TreeMap<QoSTestResultEnum, List<AbstractQoSTask>> testMap = new TreeMap<QoSTestResultEnum, List<AbstractQoSTask>>();
+    final TreeMap<String, QoSControlConnection> controlConnectionMap = new TreeMap<String, QoSControlConnection>();
     		
     private TreeMap<QoSTestResultEnum, Counter> testGroupCounterMap = new TreeMap<QoSTestResultEnum, Counter>();
 
@@ -107,12 +111,23 @@ public class QualityOfServiceTest implements Callable<QoSResultCollector> {
 			else if (RMBTClient.TASK_UDP.equals(taskId)) {
 	        	test = new UdpTask(this, taskDesc, threadCounter++);
 			}
+			else if (RMBTClient.TASK_VOIP.equals(taskId)) {
+				test = new VoipTask(this, taskDesc, threadCounter++);
+			}
+			else if (RMBTClient.TASK_TRACEROUTE.equals(taskId)) {
+				if (nnTestSettings != null && nnTestSettings.getTracerouteServiceClazz() != null) {
+					test = new TracerouteTask(this, taskDesc, threadCounter++);	
+				}
+				else {
+					System.out.println("No TracerouteService implementation: Skipping TracerouteTask: " + taskDesc);
+				}
+			}
 			else if (RMBTClient.TASK_WEBSITE.equals(taskId)) {
 				if (nnTestSettings != null && nnTestSettings.getWebsiteTestService() != null) {
 					test = new WebsiteTask(this, taskDesc, threadCounter++);	
 				}
 				else {
-					System.out.println("No WebsiteTestService implementation: Skipping WebsiteTest: " + taskDesc);
+					System.out.println("No WebsiteTestService implementation: Skipping WebsiteTask: " + taskDesc);
 				}
 			}
 			
@@ -130,10 +145,10 @@ public class QualityOfServiceTest implements Callable<QoSResultCollector> {
 				
 				if (testGroupCounterMap.containsKey(test.getTestType())) {
 					testTypeCounter = testGroupCounterMap.get(test.getTestType());
-					testTypeCounter.target++;
+					testTypeCounter.increaseCounter(test.getConcurrencyGroup());
 				}
 				else {
-					testTypeCounter = new Counter(1);
+					testTypeCounter = new Counter(test.getTestType(), 1, test.getConcurrencyGroup());
 					testGroupCounterMap.put(test.getTestType(), testTypeCounter);
 				}
 				
@@ -149,7 +164,21 @@ public class QualityOfServiceTest implements Callable<QoSResultCollector> {
 				}
 				
 				if (tasks != null) {
-					tasks.add(test);	
+					tasks.add(test);
+				}
+				
+				if (!controlConnectionMap.containsKey(test.getTestServerAddr())) {
+					RMBTTestParameter params = new RMBTTestParameter(test.getTestServerAddr(), test.getTestServerPort(), 
+									nnTestSettings.isUseSsl(), test.getTaskDesc().getToken(), 
+									test.getTaskDesc().getDuration(), test.getTaskDesc().getNumThreads(),
+									test.getTaskDesc().getNumPings(), test.getTaskDesc().getStartTime());
+					controlConnectionMap.put(test.getTestServerAddr(), new QoSControlConnection(getRMBTClient(), params));
+				}
+				
+				//check if qos test need test server
+				if (test.needsQoSControlConnection()) {
+					test.setControlConnection(controlConnectionMap.get(test.getTestServerAddr()));
+					controlConnectionMap.get(test.getTestServerAddr()).getConcurrencyGroupSet().add(test.getConcurrencyGroup());
 				}
 			}
 		}
@@ -175,13 +204,16 @@ public class QualityOfServiceTest implements Callable<QoSResultCollector> {
 		}
 		
 		Iterator<Integer> groupIterator = concurrentTasks.keySet().iterator();
-		while (groupIterator.hasNext()) {
+		while (groupIterator.hasNext() && !status.get().equals(QoSTestEnum.ERROR)) {			
+			final int groupId = groupIterator.next();			
+			concurrentGroupCount.set(groupId);
+			
+			//check if a qos control server connection needs to be initialized:
+			openControlConnections(groupId);
+			
 			if (status.get().equals(QoSTestEnum.ERROR)) {
 				break;
 			}
-			
-			final int groupId = groupIterator.next();			
-			concurrentGroupCount.set(groupId);
 			
 			List<AbstractQoSTask> tasks = concurrentTasks.get(groupId);
 			for (AbstractQoSTask task : tasks) {
@@ -193,10 +225,17 @@ public class QualityOfServiceTest implements Callable<QoSResultCollector> {
 	        		Future<QoSTestResult> testResult = executorService.take();
 	        		if (testResult!=null) {
 	        			QoSTestResult curResult = testResult.get();
+	        			
 	        			if (curResult.isFatalError()) {
 	        				throw new InterruptedException("interrupted due to test fatal error: " + curResult.toString());
 	        			}
-	            		result.getResults().add(curResult);
+	        			
+	        			if (!curResult.getQosTask().hasConnectionError()) {
+		            		result.getResults().add(curResult);
+	        			}
+	        			else {
+	        				System.out.println("test: " + curResult.getTestType().name() + " failed. Could not connect to QoSControlServer.");
+	        			}
 	            		System.out.println("test " + curResult.getTestType().name() + " finished (" + (progress.get() + 1) + " out of " + 
 	            				testSize + ", CONCURRENCY GROUP=" + groupId + ")");
 	            		Counter testTypeCounter = testGroupCounterMap.get(curResult.getTestType());
@@ -219,6 +258,8 @@ public class QualityOfServiceTest implements Callable<QoSResultCollector> {
 					progress.incrementAndGet();    			
 	    		}
 			}
+
+			closeControlConnections(groupId);
 		}
 		
 		if (status.get().equals(QoSTestEnum.ERROR)) {
@@ -352,13 +393,74 @@ public class QualityOfServiceTest implements Callable<QoSResultCollector> {
             executor.shutdownNow();
     }
     
+    /**
+     * 
+     * @author lb
+     *
+     */
     public final class Counter {
+    	public QoSTestResultEnum testType;
     	public int value;
     	public int target;
-    	
-    	public Counter(int target) {
+    	public int firstTest;
+    	public int lastTest;
+
+		public Counter(QoSTestResultEnum testType, int target, int concurrencyGroup) {
+    		this.testType = testType;
     		this.value = 0;
     		this.target = target;
+    		this.firstTest = concurrencyGroup;
+    		this.lastTest = concurrencyGroup;
+    	}
+    	
+    	public void increaseCounter(int concurrencyGroup) {
+    		this.target++;
+    		lastTest = concurrencyGroup > lastTest ? concurrencyGroup : lastTest;
+    		firstTest = concurrencyGroup < firstTest ? concurrencyGroup : firstTest;
+    	}
+
+		@Override
+		public String toString() {
+			return "Counter [testType=" + testType + ", value=" + value
+					+ ", target=" + target + ", firstTest=" + firstTest
+					+ ", lastTest=" + lastTest + "]";
+		}
+    }
+
+    private void openControlConnections(int concurrencyGroup) {
+		manageControlConnections(concurrencyGroup, true);
+    }
+
+    private void closeControlConnections(int concurrencyGroup) {
+		manageControlConnections(concurrencyGroup, false);
+    }
+    
+    private void manageControlConnections(int concurrencyGroup, boolean openAll) {
+    	Iterator<QoSControlConnection> iterator = controlConnectionMap.values().iterator();
+    	while (iterator.hasNext()) {
+    		final QoSControlConnection controlConnection = iterator.next();
+    		
+			try {
+				if (controlConnection.getConcurrencyGroupSet().size() > 0) {
+					if (openAll) {
+						if (controlConnection.getConcurrencyGroupSet().first() == concurrencyGroup) {
+							controlConnection.connect();
+							RMBTClient.getCommonThreadPool().execute(controlConnection);
+						}
+					}
+					else {
+						if (controlConnection.getConcurrencyGroupSet().last() == concurrencyGroup) {
+							controlConnection.close();
+						}
+					}
+				}
+			}
+			catch (Exception e) {
+				e.printStackTrace();
+//    			executor.shutdownNow();
+//				status.set(QoSTestEnum.ERROR);
+//				break;
+			}
     	}
     }
 }

@@ -24,7 +24,7 @@
     android:paddingTop="5dp" >
 
     <TextView
-        style="@style/textMediumLight"
+        style="@style/QoSTheme.TextView.Result.ClassificationItem"
 		android:background="@drawable/list_selector"
         android:id="@+id/name"
         android:layout_width="wrap_content"
@@ -35,16 +35,27 @@
         android:gravity="left" />
 
     <ImageView
+        android:id="@+id/info_sub_view"
+        android:layout_width="wrap_content" 
+        android:layout_height="wrap_content"
+        android:src="@android:drawable/ic_menu_info_details"
+        android:layout_centerVertical="true"
+        android:layout_alignParentRight="true"
+        android:layout_marginRight="8dp"
+        android:visibility="invisible" />
+    
+    
+    <ImageView
         android:id="@+id/status"
         android:layout_width="wrap_content" 
         android:layout_height="wrap_content"
         android:src="@drawable/traffic_lights_green"
         android:layout_centerVertical="true"
-        android:layout_alignParentRight="true"
-        android:layout_marginRight="25dp" />
+        android:layout_toLeftOf="@id/info_sub_view"
+        android:layout_marginRight="8dp" />
     
     <TextView
-        style="@style/textMediumLight"
+        style="@style/QoSTheme.TextView.Result.ClassificationItem"
         android:id="@+id/qos_type_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

@@ -1,36 +1,40 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
- * 
+ * Copyright 2015 SPECURE GmbH
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- ******************************************************************************/
+ *******************************************************************************/
 package at.alladin.rmbt.android.views;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 import android.content.Context;
 import android.os.Handler;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.Animation.AnimationListener;
 import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import at.alladin.openrmbt.android.R;
-import at.alladin.rmbt.android.adapter.result.QoSCategoryPagerAdapter;
 import at.alladin.rmbt.android.util.ConfigHelper;
 import at.alladin.rmbt.client.QualityOfServiceTest;
 import at.alladin.rmbt.client.QualityOfServiceTest.Counter;
@@ -56,7 +60,8 @@ public class GroupCountView extends LinearLayout implements TestProgressListener
 	 */
 	public final static float MAX_VALUE_UNFINISHED_TEST = 0.9f;
 	
-	Map<QoSTestResultEnum, Counter> counterMap;
+	Set<Counter> counterSet;
+	//Map<QoSTestResultEnum, Counter> counterMap;
 	Map<QoSTestResultEnum, View> viewMap = new HashMap<QoSTestResultEnum, View>();
 	Map<QoSTestResultEnum, List<AbstractQoSTask>> taskMap = new HashMap<QoSTestResultEnum, List<AbstractQoSTask>>();
 	float ndtProgress = -1f;
@@ -106,17 +111,17 @@ public class GroupCountView extends LinearLayout implements TestProgressListener
 	public View createView(final LayoutInflater inflater, boolean isInitializing)
     {       
 		try {
-			if (!isInitializing && counterMap != null && counterMap.keySet()!= null) {
+			if (!isInitializing && counterSet != null && counterSet.size() > 0) {
 				removeAllViews();
-				Iterator<QoSTestResultEnum> keys = counterMap.keySet().iterator();
+				Iterator<Counter> keys = counterSet.iterator();
 				while (keys.hasNext()) {
 			    	LinearLayout l = new LinearLayout(getContext());
 			    	l.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
 			    	l.setOrientation(LinearLayout.HORIZONTAL);
 
-					QoSTestResultEnum testType = keys.next();
-					View viewLeft = createSubView(inflater, testType, counterMap.get(testType));
-					viewMap.put(testType, viewLeft);
+					final Counter testCounter = keys.next();
+					View viewLeft = createSubView(inflater, testCounter);
+					viewMap.put(testCounter.testType, viewLeft);
 					l.addView(viewLeft);
 					
 					addView(l);
@@ -153,13 +158,13 @@ public class GroupCountView extends LinearLayout implements TestProgressListener
 	 * @param counter
 	 * @return
 	 */
-	private View createSubView(LayoutInflater inflater, QoSTestResultEnum testType, Counter counter) {
+	private View createSubView(LayoutInflater inflater, Counter counter) {
 		View view = null;
     	view = inflater.inflate(R.layout.test_view_qos_group_counter, null);
     	view.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, .5f));
     	TextView title = (TextView) view.findViewById(R.id.test_view_qos_groupname);
     	TextView progress = (TextView) view.findViewById(R.id.test_view_qos_progress);
-		title.setText(getContext().getResources().getString(QoSCategoryPagerAdapter.TITLE_MAP.get(testType)));
+		title.setText(ConfigHelper.getCachedQoSNameByTestType(counter.testType, getContext()));
 		progress.setText("(" + counter.value + "/" + counter.target + ")");
 		System.out.println("adding new subview with title=" + title.getText() + " and progress=" + progress.getText());
     	return view;
@@ -191,7 +196,17 @@ public class GroupCountView extends LinearLayout implements TestProgressListener
 			Iterator<QoSTestResultEnum> keys = counterMap.keySet().iterator();
 			if ((viewMap == null || getChildCount() <= 1 || (viewMap.size() == 0  && status.equals(QoSTestEnum.QOS_RUNNING))) && counterMap != null) {
 				//init and create view if empty:
-				this.counterMap = counterMap;
+				this.counterSet = new TreeSet<QualityOfServiceTest.Counter>(new Comparator<QualityOfServiceTest.Counter>() {
+
+					@Override
+					public int compare(Counter lhs, Counter rhs) {
+						if (lhs.lastTest > rhs.lastTest) return 1;
+						else if (lhs.lastTest < rhs.lastTest) return -1;
+						else return lhs.hashCode() - rhs.hashCode();
+					}
+				});
+				
+				this.counterSet.addAll(counterMap.values());
 				LayoutInflater layoutInflater = (LayoutInflater) getContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 				createView(layoutInflater, false);
 			}
@@ -209,9 +224,6 @@ public class GroupCountView extends LinearLayout implements TestProgressListener
 				if (view != null) {
 					Counter counter = counterMap.get(key);
 					final int value = counter.value;
-					if (value > 0) {
-						updateProgressBar(key);
-					}
 					
 					/*
 					 * calculate current test group progress
@@ -254,41 +266,16 @@ public class GroupCountView extends LinearLayout implements TestProgressListener
 						ImageView image = (ImageView) view.findViewById(R.id.test_view_qos_image);
 						image.setAnimation(null);
 						image.setImageResource(R.drawable.traffic_lights_green);
+						image.setVisibility(View.VISIBLE);
+						progressBar.setVisibility(View.GONE);
+						final Animation animationHideSlideUp = AnimationUtils.loadAnimation(getContext(), R.anim.hide_fade_out);
+						animationHideSlideUp.setAnimationListener(new AnimationHideSlideUp(view));
+						view.setAnimation(animationHideSlideUp);
 					}
 				}
 			}
 			//}
 	}
-
-	/**
-	 * 
-	 * @param testType
-	 */
-	public void updateProgressBar(final QoSTestResultEnum testType) {
-		if (viewMap != null) {
-			View view = viewMap.get(testType);
-			if (view != null) {
-				ImageView image = (ImageView) view.findViewById(R.id.test_view_qos_image);
-				if (image.getAnimation() == null) {
-					image.setImageResource(R.drawable.traffic_lights_yellow);
-					image.startAnimation(AnimationUtils.loadAnimation(getContext(), R.anim.rotate));
-				}
-			}
-		}
-	}
-
-	@Override
-	public void onQoSTestStart(final AbstractQoSTask test) {
-		
-		handler.post(new Runnable() {
-			
-			@Override
-			public void run() {
-				updateProgressBar(test.getTestType());	
-			}
-		});
-	}
-
 
 	@Override
 	public void onQoSTestEnd(AbstractQoSTask test) {
@@ -301,6 +288,37 @@ public class GroupCountView extends LinearLayout implements TestProgressListener
 	 */
 	@Override
 	public void onQoSCreated(QualityOfServiceTest qosTest) {
-		setTaskMap(qosTest.getTestMap());		
+		setTaskMap(qosTest.getTestMap());
 	}
+
+	@Override
+	public void onQoSTestStart(AbstractQoSTask test) {
+		// TODO Auto-generated method stub
+	}
+	
+	private final class AnimationHideSlideUp implements AnimationListener {
+		
+		private final View view;
+		
+		public AnimationHideSlideUp(View view) {
+			this.view = view;
+		}
+		
+		@Override
+		public void onAnimationStart(Animation animation) {
+			// TODO Auto-generated method stub
+			
+		}
+		
+		@Override
+		public void onAnimationRepeat(Animation animation) {
+			// TODO Auto-generated method stub
+			
+		}
+		
+		@Override
+		public void onAnimationEnd(Animation animation) {
+			this.view.setVisibility(View.GONE);
+		}
+	}; 
 }

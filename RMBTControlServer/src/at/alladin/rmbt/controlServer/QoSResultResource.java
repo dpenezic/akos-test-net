@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ public class QoSResultResource extends ServerResource
         final JSONObject answer = new JSONObject();
         String answerString;
         
-        System.out.println(MessageFormat.format(labels.getString("NEW_TESTRESULT_DETAIL"), getIP()));
+        System.out.println(MessageFormat.format(labels.getString("NEW_QOS_TESTRESULT_DETAIL"), getIP()));
         
         if (entity != null && !entity.isEmpty())
             // try parse the string to a JSON object
@@ -72,7 +72,10 @@ public class QoSResultResource extends ServerResource
                 
                 if (conn != null) {
                     final String testUuid = request.optString("test_uuid");
+                    long ts = System.nanoTime();
                     QoSUtil.evaluate(settings, conn, new TestUuid(testUuid, UuidType.TEST_UUID), answer, lang, errorList);
+                    long endTs = System.nanoTime() - ts;
+                    answer.put("evaluation", "Time needed to evaluate test result: " + ((float)endTs / 1000000f) + " ms" );
                 }
                 else {
                     errorList.addError("ERROR_DB_CONNECTION");
@@ -96,7 +99,8 @@ public class QoSResultResource extends ServerResource
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (UnsupportedOperationException e) {
-				errorList.addError("ERROR_REQUEST_TEST_RESULT_DETAIL_NO_UUID");
+				e.printStackTrace();
+				errorList.addError("ERROR_REQUEST_QOS_RESULT_DETAIL_NO_UUID");
 			}
 
         else
@@ -112,6 +116,8 @@ public class QoSResultResource extends ServerResource
         }
         
         answerString = answer.toString();
+        
+        //System.out.println(answerString);
         
         return answerString;
     }

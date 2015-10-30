@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,16 +21,30 @@ import android.graphics.PixelFormat;
 import android.os.Bundle;
 import android.view.Window;
 import android.view.WindowManager;
+import at.alladin.rmbt.android.main.AppConstants;
+import at.alladin.rmbt.android.terms.RMBTCheckFragment.CheckType;
+
 import at.alladin.openrmbt.android.R;
 
 public class RMBTTermsActivity extends Activity
 {
+	public final static String EXTRA_KEY_CHECK_TYPE = "check_type";
+	
+	
+	private CheckType checkType = null;
+	
     @Override
     public void onCreate(final Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
         
+        if (getIntent().getExtras() != null) {
+        	final String checkTypeName = getIntent().getExtras().getString(EXTRA_KEY_CHECK_TYPE, null);
+        	if (checkTypeName != null) {
+        		checkType = CheckType.valueOf(checkTypeName);
+        	}
+        }
         
         final Window window = getWindow();
         window.setFormat(PixelFormat.RGBA_8888);
@@ -43,15 +57,23 @@ public class RMBTTermsActivity extends Activity
     public void showTermsCheck()
     {
         final FragmentTransaction ft = getFragmentManager().beginTransaction();
-        ft.replace(R.id.fragment_content, new RMBTTermsCheckFragment(), "terms_check");
+        ft.replace(R.id.fragment_content, RMBTTermsCheckFragment.getInstance(checkType), "terms_check");
+        ft.commit();
+    }
+        
+    public void showIcCheck()
+    {
+        final FragmentTransaction ft = getFragmentManager().beginTransaction();
+        ft.replace(R.id.fragment_content, RMBTCheckFragment.newInstance(CheckType.INFORMATION_COMMISSIONER), AppConstants.PAGE_TITLE_CHECK_INFORMATION_COMMISSIONER);
+        ft.addToBackStack(AppConstants.PAGE_TITLE_CHECK_INFORMATION_COMMISSIONER);
         ft.commit();
     }
     
     public void showNdtCheck()
     {
         final FragmentTransaction ft = getFragmentManager().beginTransaction();
-        ft.replace(R.id.fragment_content, new RMBTNDTCheckFragment(), "ndt_check");
-        ft.addToBackStack("ndt_check");
+        ft.replace(R.id.fragment_content, RMBTCheckFragment.newInstance(CheckType.NDT), AppConstants.PAGE_TITLE_NDT_CHECK);
+        ft.addToBackStack(AppConstants.PAGE_TITLE_NDT_CHECK);
         ft.commit();
     }
 }

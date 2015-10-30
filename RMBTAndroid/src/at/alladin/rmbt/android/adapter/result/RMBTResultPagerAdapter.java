@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,6 @@
  ******************************************************************************/
 package at.alladin.rmbt.android.adapter.result;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -30,7 +27,7 @@ import android.os.Parcelable;
 import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager.LayoutParams;
 import android.util.Log;
-import android.view.Gravity;
+import android.util.SparseIntArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -75,10 +72,10 @@ public class RMBTResultPagerAdapter extends PagerAdapter {
 	public final static int RESULT_PAGE_GRAPH = 3;
 	public final static int RESULT_PAGE_MAP = 4;
 
-	public final static Map<Integer, Integer> RESULT_PAGE_TAB_TITLE_MAP;
+	public final static SparseIntArray RESULT_PAGE_TAB_TITLE_MAP;
 	
 	static {
-		RESULT_PAGE_TAB_TITLE_MAP = new HashMap<Integer, Integer>();
+		RESULT_PAGE_TAB_TITLE_MAP = new SparseIntArray();
 		RESULT_PAGE_TAB_TITLE_MAP.put(RESULT_PAGE_MAIN_MENU, 0);
 		RESULT_PAGE_TAB_TITLE_MAP.put(RESULT_PAGE_QOS, 1);
 		RESULT_PAGE_TAB_TITLE_MAP.put(RESULT_PAGE_TEST, 2);
@@ -204,7 +201,7 @@ public class RMBTResultPagerAdapter extends PagerAdapter {
                         
                         RMBTResultPagerAdapter.this.testResult = testResult;
                         
-                        displayResult(view);
+                        displayResult(view, inflater, vg);
                         
                     	JSONObject testResultItem;
 						try {
@@ -238,7 +235,7 @@ public class RMBTResultPagerAdapter extends PagerAdapter {
             testResultTask.execute(testUuid);	
         }
         else {
-            displayResult(view);
+            displayResult(view, inflater, vg);
         }
         
 
@@ -255,7 +252,7 @@ public class RMBTResultPagerAdapter extends PagerAdapter {
      * 
      * @param view
      */
-    private void displayResult(View view) {
+    private void displayResult(View view, LayoutInflater inflater, ViewGroup vg) {
     	/*
         final Button shareButton = (Button) view.findViewById(R.id.resultButtonShare);
         if (shareButton != null)
@@ -330,48 +327,22 @@ public class RMBTResultPagerAdapter extends PagerAdapter {
                 
                 final JSONArray netArray = resultListItem.getJSONArray("net");
                 
-                final int leftRightItem = Helperfunctions.dpToPx(5, scale);
-                final int topBottomItem = Helperfunctions.dpToPx(5, scale);
-                
                 final int leftRightDiv = Helperfunctions.dpToPx(0, scale);
                 final int topBottomDiv = Helperfunctions.dpToPx(0, scale);
                 final int heightDiv = Helperfunctions.dpToPx(1, scale);
                 
-                final int topBottomImg = Helperfunctions.dpToPx(1, scale);
-                
                 for (int i = 0; i < measurementArray.length(); i++)
                 {
                     
+                	final View measurementItemView = inflater.inflate(R.layout.classification_list_item, vg, false);
+                	
                     final JSONObject singleItem = measurementArray.getJSONObject(i);
-                    
-                    final LinearLayout measurememtItemLayout = new LinearLayout(activity); // (LinearLayout)measurememtItemView.findViewById(R.id.measurement_item);
-                    
-                    measurememtItemLayout.setLayoutParams(new LinearLayout.LayoutParams(
-                            LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
-                    
-                    measurememtItemLayout.setGravity(Gravity.CENTER_VERTICAL);
-                    measurememtItemLayout
-                            .setPadding(leftRightItem, topBottomItem, leftRightItem, topBottomItem);
-                    
-                    final TextView itemTitle = new TextView(activity, null, R.style.listResultItemTitle);
-                    itemTitle.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT,
-                            LayoutParams.WRAP_CONTENT, 0.4f));
-                    itemTitle.setWidth(0);
-                    itemTitle.setGravity(Gravity.LEFT);
+                                        
+                    final TextView itemTitle = (TextView) measurementItemView.findViewById(R.id.classification_item_title);
                     itemTitle.setText(singleItem.getString("title"));
                     
-                    measurememtItemLayout.addView(itemTitle);
-                    
-                    final ImageView itemClassification = new ImageView(activity);
-                    itemClassification.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT,
-                            LayoutParams.MATCH_PARENT, 0.1f));
-                    itemClassification.setPadding(0, topBottomImg, 0, topBottomImg);
-                    // itemClassification.set setGravity(Gravity.LEFT);
-                    
-                    itemClassification.setImageDrawable(activity.getResources().getDrawable(
-                            Helperfunctions.getClassificationColor(singleItem.getInt("classification"))));
-                    
-                    measurememtItemLayout.addView(itemClassification);
+                    final ImageView itemClassification = (ImageView) measurementItemView.findViewById(R.id.classification_item_color);                    
+                    itemClassification.setImageResource(Helperfunctions.getClassificationColor(singleItem.getInt("classification")));
                     
                     itemClassification.setOnClickListener(new OnClickListener()
                     {
@@ -382,20 +353,13 @@ public class RMBTResultPagerAdapter extends PagerAdapter {
                         }
                     });
                     
-                    final TextView itemValue = new TextView(activity, null, R.style.listResultItemValue);
-                    itemValue.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT,
-                            LayoutParams.WRAP_CONTENT, 0.5f));
-                    itemValue.setWidth(0);
-                    itemValue.setGravity(Gravity.LEFT);
+                    final TextView itemValue = (TextView) measurementItemView.findViewById(R.id.classification_item_value);
                     itemValue.setText(singleItem.getString("value"));
                     
-                    measurememtItemLayout.addView(itemValue);
-                    
-                    measurementLayout.addView(measurememtItemLayout);
+                    measurementLayout.addView(measurementItemView);
                     
                     final View divider = new View(activity);
-                    divider.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, heightDiv,
-                            1));
+                    divider.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, heightDiv, 1));
                     divider.setPadding(leftRightDiv, topBottomDiv, leftRightDiv, topBottomDiv);
                     
                     divider.setBackgroundResource(R.drawable.bg_trans_light_10);
@@ -452,55 +416,38 @@ public class RMBTResultPagerAdapter extends PagerAdapter {
         }
     }
     
-    public void addResultListItem(String title, String value, LinearLayout  netLayout) {
+    public void addResultListItem(String title, String value, LinearLayout netLayout) {
     	final float scale = activity.getResources().getDisplayMetrics().density;
-        final int leftRightItem = Helperfunctions.dpToPx(5, scale);
-        final int topBottomItem = Helperfunctions.dpToPx(5, scale);
         final int leftRightDiv = Helperfunctions.dpToPx(0, scale);
         final int topBottomDiv = Helperfunctions.dpToPx(0, scale);
         final int heightDiv = Helperfunctions.dpToPx(1, scale);        
-        final int topBottomImg = Helperfunctions.dpToPx(1, scale);
         
-        final LinearLayout netItemLayout = new LinearLayout(activity); 
+        LayoutInflater inflater = (LayoutInflater) activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         
-        netItemLayout.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT,
-                LayoutParams.WRAP_CONTENT));
-        netItemLayout.setPadding(leftRightItem, topBottomItem, leftRightItem, topBottomItem);
-        
-        netItemLayout.setGravity(Gravity.CENTER_VERTICAL);
-        
-        final TextView itemTitle = new TextView(activity, null, R.style.listResultItemTitle);
-        itemTitle.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT,
-                LayoutParams.WRAP_CONTENT, 0.4f));
-        itemTitle.setWidth(0);
-        itemTitle.setGravity(Gravity.LEFT);
+    	final View measurementItemView = inflater.inflate(R.layout.classification_list_item, netLayout, false);
+    	
+        final TextView itemTitle = (TextView) measurementItemView.findViewById(R.id.classification_item_title);
         itemTitle.setText(title);
         
-        netItemLayout.addView(itemTitle);
+        final ImageView itemClassification = (ImageView) measurementItemView.findViewById(R.id.classification_item_color);                    
+        itemClassification.setImageResource(Helperfunctions.getClassificationColor(-1));
         
-        final ImageView itemClassification = new ImageView(activity);
-        itemClassification.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT,
-                LayoutParams.MATCH_PARENT, 0.1f));
-        itemClassification.setPadding(0, topBottomImg, 0, topBottomImg);
+        itemClassification.setOnClickListener(new OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {
+                activity.showHelp(R.string.url_help_result, false);
+            }
+        });
         
-        itemClassification.setImageDrawable(activity.getResources().getDrawable(
-                R.drawable.traffic_lights_none));
-        netItemLayout.addView(itemClassification);
-        
-        final TextView itemValue = new TextView(activity, null, R.style.listResultItemValue);
-        itemValue.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT,
-                LayoutParams.WRAP_CONTENT, 0.5f));
-        itemValue.setWidth(0);
-        itemValue.setGravity(Gravity.LEFT);
+        final TextView itemValue = (TextView) measurementItemView.findViewById(R.id.classification_item_value);
         itemValue.setText(value);
         
-        netItemLayout.addView(itemValue);
-        
-        netLayout.addView(netItemLayout);
+        netLayout.addView(measurementItemView);
         
         final View divider = new View(activity);
-        divider.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, heightDiv,
-                1));
+        divider.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, heightDiv, 1));
         divider.setPadding(leftRightDiv, topBottomDiv, leftRightDiv, topBottomDiv);
         
         divider.setBackgroundResource(R.drawable.bg_trans_light_10);
@@ -861,10 +808,12 @@ public class RMBTResultPagerAdapter extends PagerAdapter {
     	try {
         	JSONObject resultListItem = testResult.getJSONObject(0);
         	final String shareText = resultListItem.getString("share_text");
+        	final String shareSubject = resultListItem.getString("share_subject");
         	
             final Intent sendIntent = new Intent();
             sendIntent.setAction(Intent.ACTION_SEND);
             sendIntent.putExtra(Intent.EXTRA_TEXT, shareText);
+            sendIntent.putExtra(Intent.EXTRA_SUBJECT, shareSubject);
             sendIntent.setType("text/plain");
             activity.startActivity(Intent.createChooser(sendIntent, null));            		
     	}

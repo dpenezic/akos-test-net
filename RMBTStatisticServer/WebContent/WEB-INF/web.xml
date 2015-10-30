@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Copyright 2013-2014 alladin-IT GmbH
+  Copyright 2013-2015 alladin-IT GmbH
   
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -25,6 +25,16 @@
     <welcome-file>default.htm</welcome-file>
     <welcome-file>default.jsp</welcome-file>
   </welcome-file-list>
+  
+  <listener>
+    <listener-class>at.alladin.rmbt.shared.cache.CacheContextListener</listener-class>
+   </listener>
+   
+  <listener>
+    <listener-class>
+     at.alladin.rmbt.statisticServer.ContextListener
+    </listener-class>
+   </listener>
   
   <!-- Application class name -->
     <context-param>

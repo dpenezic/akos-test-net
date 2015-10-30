@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Copyright 2013-2014 alladin-IT GmbH
+  Copyright 2013-2015 alladin-IT GmbH
   
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -38,9 +38,18 @@
             android:layout_height="wrap_content"
             layout="@layout/test_view" />
 
+    	<ListView
+    	    android:divider="@null"
+    	    android:layout_alignParentTop="true"
+    	    android:layout_alignParentLeft="true"
+        	android:id="@+id/test_view_info_listview"
+        	android:layout_width="wrap_content"
+        	android:layout_height="wrap_content" >
+    	</ListView>
+        
     </RelativeLayout>
     
-    <include
+	<include
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="2dp"

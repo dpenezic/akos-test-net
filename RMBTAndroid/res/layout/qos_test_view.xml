@@ -37,7 +37,7 @@
                 style="@style/listViewHistoryLabelRow"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@color/bgblue"
+                android:background="@color/defaut_list_header_background"
                 android:gravity="center" >
 
                 <TextView
@@ -162,7 +162,7 @@
                 style="@style/listViewHistoryLabelRow"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@color/bgblue"
+                android:background="@color/defaut_list_header_background"
                 android:gravity="center" >
 
                 <TextView

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 package at.alladin.rmbt.controlServer;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
@@ -32,18 +30,24 @@ import org.restlet.resource.ResourceException;
 import org.restlet.util.Series;
 
 import at.alladin.rmbt.db.DbConnection;
+import at.alladin.rmbt.shared.Classification;
 import at.alladin.rmbt.shared.ResourceManager;
+import at.alladin.rmbt.shared.SettingsHelper;
+import at.alladin.rmbt.shared.Settings;
 
-public class ServerResource extends org.restlet.resource.ServerResource
+public class ServerResource extends org.restlet.resource.ServerResource implements Settings
 {
     protected Connection conn;
     protected ResourceBundle labels;
     protected ResourceBundle settings;
+    protected Classification classification;
     
     @Override
     public void doInit() throws ResourceException
     {
         super.doInit();
+        
+        classification = Classification.getInstance();
         
         settings = ResourceManager.getCfgBundle();
         // Set default Language for System
@@ -95,7 +99,7 @@ public class ServerResource extends org.restlet.resource.ServerResource
         responseHeaders.add("Access-Control-Allow-Credentials", "false");
         responseHeaders.add("Access-Control-Max-Age", "60");
     }
-    
+
     @Options
     public void doOptions(final Representation entity)
     {
@@ -124,34 +128,16 @@ public class ServerResource extends org.restlet.resource.ServerResource
             return getRequest().getOriginalRef();
     }
     
-    protected String getSetting(String key, String lang)
+    @Override
+    public String getSetting(String key)
     {
-        if (conn == null)
-            return null;
-        
-
-        try (final PreparedStatement st = conn.prepareStatement(
-                        "SELECT value"
-                        + " FROM settings"
-                        + " WHERE key=? AND (lang IS NULL OR lang = ?)"
-                        + " ORDER BY lang NULLS LAST LIMIT 1");)
-        {
-                    
-            st.setString(1, key);
-            st.setString(2, lang);
-            
-            try (final ResultSet rs = st.executeQuery();)
-            {
-            
-                if (rs != null && rs.next())
-                    return rs.getString("value");
-            }
-            return null;
-        }
-        catch (SQLException e)
-        {
-            e.printStackTrace();
-            return null;
-        }
+        return getSetting(key, null);
+    }
+    
+    // TODO: add caching!
+    @Override
+    public String getSetting(String key, String lang)
+    {
+        return SettingsHelper.getSetting(conn, key, lang);
     }
 }

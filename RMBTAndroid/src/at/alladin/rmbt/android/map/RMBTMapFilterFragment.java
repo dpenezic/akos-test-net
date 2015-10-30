@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ import android.widget.RadioButton;
 import android.widget.TextView;
 import at.alladin.openrmbt.android.R;
 import at.alladin.rmbt.android.main.RMBTMainActivity;
+import at.alladin.rmbt.android.map.MapProperties.MapOverlay;
 import at.alladin.rmbt.android.util.SectionListAdapter;
 
 /**
@@ -171,18 +172,13 @@ public class RMBTMapFilterFragment extends Fragment implements OnItemClickListen
             // handle sat differently
             final String value = clickedEntry.getValue();
             final RMBTMainActivity activity = getRMBTMainActivity();
-            if (MapProperties.MAP_SAT_KEY.equals(clickedEntry.getKey()))
+                        
+            if (MapProperties.MAP_SAT_KEY.equals(clickedEntry.getKey())) {
                 activity.setMapTypeSatellite(MapProperties.MAP_SAT_VALUE.equals(value));
-            else if (MapProperties.MAP_OVERLAY_KEY.equals(clickedEntry.getKey()))
-            {
-                if (MapProperties.MAP_AUTO_VALUE.equals(value))
-                    activity.setMapOverlayType(MapProperties.MAP_OVERLAY_TYPE_AUTO);
-                else if (MapProperties.MAP_HEATMAP_VALUE.equals(value))
-                    activity.setMapOverlayType(MapProperties.MAP_OVERLAY_TYPE_HEATMAP);
-                else if (MapProperties.MAP_POINTS_VALUE.equals(value))
-                    activity.setMapOverlayType(MapProperties.MAP_OVERLAY_TYPE_POINTS);
-                else if (MapProperties.MAP_SHAPES_VALUE.equals(value))
-                    activity.setMapOverlayType(MapProperties.MAP_OVERLAY_TYPE_SHAPES);
+            }
+            else if (MapProperties.MAP_OVERLAY_KEY.equals(clickedEntry.getKey())) {
+            	final MapOverlay mapOverlay = MapOverlay.valueOf(value);
+            	activity.setMapOverlayType(mapOverlay);
             }
             else
                 // set new filter options:

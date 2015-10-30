@@ -233,8 +233,9 @@ public abstract class Helperfunctions
         return adr.isLinkLocalAddress() || adr.isLoopbackAddress() || adr.isSiteLocalAddress();
     }
     
+ /*
     public static String filterIp(InetAddress inetAddress)
-    {
+    { // obsoleted by removal of old client_local_ip column
         try
         {
             final String ipVersion;
@@ -260,6 +261,38 @@ public abstract class Helperfunctions
             return "illegal_ip";
         }
     }
+    
+   */ 
+    public static String IpType(InetAddress inetAddress)
+    {
+        try
+        {
+            final String ipVersion;
+            if (inetAddress instanceof Inet4Address)
+                ipVersion = "ipv4";
+            else if (inetAddress instanceof Inet6Address)
+                ipVersion = "ipv6";
+            else
+                ipVersion = "ipv?";
+            
+            if (inetAddress.isAnyLocalAddress())
+                return "wildcard_" + ipVersion;
+            if (inetAddress.isSiteLocalAddress())
+                return "site_local_" + ipVersion;
+            if (inetAddress.isLinkLocalAddress())
+                return "link_local_" + ipVersion;
+            if (inetAddress.isLoopbackAddress())
+                return "loopback_" + ipVersion;
+            return "public_" + ipVersion;
+
+        }
+        catch (final IllegalArgumentException e)
+        {
+            return "illegal_ip";
+        }
+    }
+    
+    
     
     public static String anonymizeIp(final InetAddress inetAddress)
     {

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,8 +22,10 @@ import java.util.List;
 import java.util.Map;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.Fragment;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.res.Configuration;
 import android.location.Location;
 import android.os.Bundle;
@@ -42,9 +44,12 @@ import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
-import at.alladin.openrmbt.android.R;
+import at.alladin.rmbt.android.impl.CpuStatAndroidImpl;
+import at.alladin.rmbt.android.impl.CpuStatAndroidImpl.CpuMemClassificationEnum;
+import at.alladin.rmbt.android.impl.MemInfoAndroidImpl;
 import at.alladin.rmbt.android.main.InfoCollector.InfoCollectorType;
 import at.alladin.rmbt.android.main.InfoCollector.OnInformationChangedListener;
 import at.alladin.rmbt.android.util.ConfigHelper;
@@ -59,6 +64,10 @@ import at.alladin.rmbt.android.util.net.NetworkInfoCollector.IpStatus;
 import at.alladin.rmbt.android.util.net.NetworkInfoCollector.OnNetworkInfoChangedListener;
 import at.alladin.rmbt.android.util.net.NetworkUtil;
 import at.alladin.rmbt.android.util.net.NetworkUtil.MinMax;
+import at.alladin.rmbt.util.tools.CpuStat;
+import at.alladin.rmbt.util.tools.MemInfo;
+
+import at.alladin.openrmbt.android.R;
 
 /**
  * 
@@ -70,6 +79,8 @@ public class RMBTMainMenuFragment extends Fragment
 	public static enum OverlayType {
 		IPV4(R.string.title_screen_ipv4, R.id.title_page_ipv4_button), 
 		IPV6(R.string.title_screen_ipv6, R.id.title_page_ipv6_button), 
+		IP(R.string.title_screen_ip, R.id.title_page_ip_button),
+		CPU_MEM(R.string.title_screen_cpu_mem_info, R.id.title_page_stats_button),
 		TRAFFIC(R.string.title_screen_traffic, R.id.title_page_traffic_button), 
 		LOCATION(R.string.result_page_title_map, R.id.title_page_location_button);
 		
@@ -109,16 +120,22 @@ public class RMBTMainMenuFragment extends Fragment
     private TextView infoNetworkType;
     private TextView infoSignalStrength;
     private TextView infoSignalStrengthExtra;
+    private TextView infoCpuStat;
+    private TextView infoMemStat;
     //private TextView infoIp;
     //private TextView infoTraffic;
     private View ipv4Button;
     private View ipv6Button;
+    private View ipButton;
     private View locationButton;
     private View trafficButton;
+    private View cpuMemStatsButton;
     private View startButton;
     
     private ImageView ipv4View;
+    private ProgressBar ipv4ProgressView;
     private ImageView ipv6View;
+    private ProgressBar ipv6ProgressView;
     private ImageView locationView;
     private ImageView antennaView;
     private ImageView ulSpeedView;
@@ -136,6 +153,10 @@ public class RMBTMainMenuFragment extends Fragment
     private RelativeLayout infoOverlay;
     private TextView infoOverlayTitle;
     private Map<OverlayType, InfoArrayAdapter> infoValueListAdapterMap = new HashMap<RMBTMainMenuFragment.OverlayType, InfoArrayAdapter>();
+    
+    private final CpuStat cpuStat = new CpuStatAndroidImpl();
+    private final MemInfo memInfo = new MemInfoAndroidImpl();
+    private final DecimalFormat percentFormat = new DecimalFormat("##0.0");
     
     /**
      * number format used for ul/dl traffic
@@ -190,8 +211,26 @@ public class RMBTMainMenuFragment extends Fragment
         
         if (startButton != null)
         {
-           startButton.setOnClickListener(new OnClickListener()
-               { public void onClick(View v) { ((RMBTMainActivity) getActivity()).startTest(true);} });
+           startButton.setOnClickListener(new OnClickListener() { 
+        	   public void onClick(View v) { 
+        		   AlertDialog alert = new AlertDialog.Builder(getActivity()).
+        				setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog, int which) {
+								((RMBTMainActivity) getActivity()).startTest(true);
+							}
+						}).
+						setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog, int which) {
+								System.out.println("Decline");
+							}
+						}).
+						setMessage(R.string.start_data_consumption_warning).
+						setCancelable(false).
+						create();
+        		   
+        		  alert.show();
+        	   }
+           });
         }
         
         final View startButtonLayout = view.findViewById(R.id.title_page_start_button_layout);
@@ -216,20 +255,25 @@ public class RMBTMainMenuFragment extends Fragment
         //infoLocation = (TextView) view.findViewById(R.id.info_gps_location);
         //infoLocation.setVisibility(View.GONE);
         infoNetwork = (TextView) view.findViewById(R.id.info_network_name);
-        infoNetwork.setVisibility(View.GONE);
+        setViewVisibility(infoNetwork, View.GONE);
+        
         infoNetworkLabel = (TextView) view.findViewById(R.id.info_network_name_label);
-        infoNetworkLabel.setVisibility(View.GONE);
+        setViewVisibility(infoNetworkLabel, View.GONE);
+
         infoNetworkType = (TextView) view.findViewById(R.id.info_network_type);
-        infoNetworkType.setVisibility(View.GONE);
+        setViewVisibility(infoNetworkType, View.GONE);
+        
         infoSignalStrength = (TextView) view.findViewById(R.id.info_signal_strength);
-        infoSignalStrength.setVisibility(View.GONE);
+        setViewVisibility(infoSignalStrength, View.GONE);
+
         infoSignalStrengthExtra = (TextView) view.findViewById(R.id.info_signal_strength_extra);
-        infoSignalStrengthExtra.setVisibility(View.INVISIBLE);
+        setViewVisibility(infoSignalStrengthExtra, View.INVISIBLE);
+
+        infoCpuStat = (TextView) view.findViewById(R.id.cpu_status);
+        infoMemStat = (TextView) view.findViewById(R.id.ram_status);
 
         locationView = (ImageView) view.findViewById(R.id.location_image);
-        if (locationView != null) {
-        	locationView.setVisibility(View.INVISIBLE);
-        }
+        setViewVisibility(locationView, View.INVISIBLE);
 
         locationButton = view.findViewById(R.id.title_page_location_button);
         if (locationButton != null) {
@@ -237,20 +281,32 @@ public class RMBTMainMenuFragment extends Fragment
         }
         
         ipv4View = (ImageView) view.findViewById(R.id.ipv4_status);
+        ipv4ProgressView = (ProgressBar) view.findViewById(R.id.ipv4_status_progress_bar);
         ipv4Button = view.findViewById(R.id.title_page_ipv4_button);
         if (ipv4Button != null) {
         	ipv4Button.setOnClickListener(detailShowOnClickListener);
         }
         
         ipv6View = (ImageView) view.findViewById(R.id.ipv6_status);
+        ipv6ProgressView = (ProgressBar) view.findViewById(R.id.ipv6_status_progress_bar);
         ipv6Button = view.findViewById(R.id.title_page_ipv6_button);
         if (ipv6Button != null) {
         	ipv6Button.setOnClickListener(detailShowOnClickListener);
         }
-        
+
+        ipButton = view.findViewById(R.id.title_page_ip_button);
+        if (ipButton != null) {
+        	ipButton.setOnClickListener(detailShowOnClickListener);
+        }
+
         trafficButton = view.findViewById(R.id.title_page_traffic_button);
         if (trafficButton != null) {
         	trafficButton.setOnClickListener(detailShowOnClickListener);
+        }
+        
+        cpuMemStatsButton = view.findViewById(R.id.title_page_stats_button);
+        if (cpuMemStatsButton != null) {
+        	cpuMemStatsButton.setOnClickListener(detailShowOnClickListener);
         }
         
         infoOverlayList = (ListView) view.findViewById(R.id.info_overlay_list);
@@ -264,13 +320,15 @@ public class RMBTMainMenuFragment extends Fragment
         	infoValueListAdapterMap.put(OverlayType.IPV6, new InfoArrayAdapter(getActivity(), OverlayType.IPV6, 
         			InfoOverlayEnum.IPV6, InfoOverlayEnum.IPV6_PUB));
         	
+        	infoValueListAdapterMap.put(OverlayType.IP, new InfoArrayAdapter(getActivity(), OverlayType.IP, InfoOverlayEnum.IPV4,
+        			InfoOverlayEnum.IPV4_PUB, InfoOverlayEnum.IPV6, InfoOverlayEnum.IPV6_PUB));
+        	
         	infoValueListAdapterMap.put(OverlayType.LOCATION, new InfoArrayAdapter(getActivity(), OverlayType.LOCATION,
         			InfoOverlayEnum.LOCATION));
-
-        	/*
-        	infoOverlayList.setAdapter(infoValueList);
-            infoOverlayList.invalidate();
-            */
+        	
+        	infoValueListAdapterMap.put(OverlayType.CPU_MEM, new InfoArrayAdapter(getActivity(), OverlayType.CPU_MEM,
+        			InfoOverlayEnum.CPU_USAGE, InfoOverlayEnum.MEM_USAGE,
+        			InfoOverlayEnum.MEM_FREE, InfoOverlayEnum.MEM_TOTAL));
         }
 
         infoOverlayTitle = (TextView) view.findViewById(R.id.info_overlay_title);
@@ -309,15 +367,12 @@ public class RMBTMainMenuFragment extends Fragment
         NetworkInfoCollector.getInstance().removeOnNetworkInfoChangedListener(onNetworkChangedListener);
     	runInfoRunnable = false;
         //infoLocation.setVisibility(View.GONE);
-        infoNetwork.setVisibility(View.GONE);
-        infoNetworkLabel.setVisibility(View.GONE);
-        infoNetworkType.setVisibility(View.GONE);
-        infoSignalStrength.setVisibility(View.GONE);
-        infoSignalStrengthExtra.setVisibility(View.INVISIBLE);
-        
-        if (locationView != null) {
-        	locationView.setVisibility(View.INVISIBLE);
-        }
+    	setViewVisibility(infoNetwork, View.GONE);
+        setViewVisibility(infoNetworkLabel, View.GONE);
+        setViewVisibility(infoNetworkType, View.GONE);
+        setViewVisibility(infoSignalStrength, View.GONE);
+        setViewVisibility(infoSignalStrengthExtra, View.INVISIBLE);
+        setViewVisibility(locationView, View.INVISIBLE);        
         
         if (informationCollector != null) {
             informationCollector.unload();
@@ -373,8 +428,25 @@ public class RMBTMainMenuFragment extends Fragment
      */
     public Runnable infoRunnable = new Runnable() {
 		@Override
-		public void run() {	
+		public void run() {			
 			if (informationCollector != null) {
+				if (cpuStat != null) {
+					final float[] cpus = cpuStat.update(false);
+					if (cpus != null && cpus.length > 0) {
+						float total = 0f;
+						for (float cpu : cpus) {
+							total += cpu;
+						}
+						
+						infoCollector.setCpuUsage((total / (float)cpus.length) * 100f);
+					}
+				}
+				
+				if (memInfo != null) {
+					memInfo.update();
+					infoCollector.setMemUsage(100f - (((float)memInfo.getFreeMem() / (float)memInfo.getTotalMem()) * 100f));
+				}
+				
 				String signalTerm = getActivity().getString(R.string.term_signal);
 				
 				Location loc = informationCollector.getLocationInfo();
@@ -385,110 +457,111 @@ public class RMBTMainMenuFragment extends Fragment
 				//System.out.println("lastNetworkType: " + lastNetworkType + ", lastNetworkTypeString: " + lastNetworkTypeString);
 				
 				Integer curSignal = lastSignal;
-				if (infoSignalStrength != null && !"UNKNOWN".equals(lastNetworkTypeString)) {
-					if (infoSignalStrength.getVisibility() == View.GONE) {
-						infoSignalStrength.setVisibility(View.VISIBLE);
-					}
+				if (!"UNKNOWN".equals(lastNetworkTypeString)) {
+					setViewVisibility(infoSignalStrength, View.VISIBLE);
 					
 	                Integer signal = informationCollector.getSignal();
-	                if (signal != null  && !"BLUETOOTH".equals(lastNetworkTypeString) && !"ETHERNET".equals(lastNetworkTypeString)) {
-	                	int signalType = informationCollector.getSignalType();
-	                	
-	                	if (signalType == InformationCollector.SINGAL_TYPE_RSRP) {
-		                	infoSignalStrength.setText("RSRP: " + signal + " dBm");
-		                	infoCollector.setSignal(signal);
-		                	Integer signalRsrq = informationCollector.getSignalRsrq();
-		                	if (signalRsrq != null) {
-		                		curSignal = signalRsrq;
-		    					if (infoSignalStrengthExtra.getVisibility() == View.INVISIBLE) {
-		    						infoSignalStrengthExtra.setVisibility(View.VISIBLE);
-		    					}
-		    					
-		    					infoCollector.setSignalRsrq(signalRsrq);
-		    					infoSignalStrengthExtra.setText("RSRQ: " + signalRsrq + " dB");
+	                if (!"BLUETOOTH".equals(lastNetworkTypeString) && !"ETHERNET".equals(lastNetworkTypeString)) {
+	                	if (signal != null && signal > Integer.MIN_VALUE) {
+		                	int signalType = informationCollector.getSignalType();
+		                	curSignal = signal;
+
+		                	if (signalType == InformationCollector.SINGAL_TYPE_RSRP) {
+		                	    setViewText(infoSignalStrength, "RSRP: " + signal + " dBm");
+			                	infoCollector.setSignal(signal);
+			                	Integer signalRsrq = informationCollector.getSignalRsrq();
+			                	if (signalRsrq != null) {
+			                		setViewVisibility(infoSignalStrengthExtra, View.VISIBLE);			    					
+			    					infoCollector.setSignalRsrq(signalRsrq);
+			    					setViewText(infoSignalStrengthExtra, "RSRQ: " + signalRsrq + " dB");
+			                	}
+			                	else {
+			                		setViewVisibility(infoSignalStrengthExtra, View.INVISIBLE);
+			                	}
 		                	}
 		                	else {
-		                		infoSignalStrengthExtra.setVisibility(View.INVISIBLE);
+		                		infoCollector.setSignal(curSignal);
+		                		setViewText(infoSignalStrength, signalTerm + ": " + signal + " dBm");
+		                		setViewVisibility(infoSignalStrengthExtra, View.INVISIBLE);
 		                	}
 	                	}
 	                	else {
-	                		curSignal = signal;
-	                		infoCollector.setSignal(curSignal);
-	                		infoSignalStrength.setText(signalTerm + ": " + signal + " dBm");
-	                		infoSignalStrengthExtra.setVisibility(View.INVISIBLE);
+	                		curSignal = Integer.MIN_VALUE;
+	                		setViewVisibility(infoSignalStrength, View.INVISIBLE);
+	                		setViewVisibility(infoSignalStrengthExtra, View.INVISIBLE);
 	                	}
 	                }
 				}
 				
-				if (infoNetworkType != null) {
-					if (lastNetworkTypeString != null && !"UNKNOWN".equals(lastNetworkTypeString))  {
+				if (lastNetworkTypeString != null && !"UNKNOWN".equals(lastNetworkTypeString))  {
 
-						if (infoNetwork != null) {
-							if (infoNetwork.getVisibility() == View.GONE) {
-								infoNetwork.setVisibility(View.VISIBLE);
-								infoNetworkLabel.setVisibility(View.VISIBLE);
-							}
-
-							String networkName = informationCollector.getOperatorName();
-							if (networkName != null && !"()".equals(networkName)) {
-								infoCollector.setNetworkName(networkName);
-								infoNetwork.setText(networkName);
-							}
-							else {
-								infoCollector.setNetworkName(networkName);
-								infoNetwork.setVisibility(View.GONE);		
-								infoNetworkLabel.setVisibility(View.GONE);
-							}
+					if (infoNetwork != null) {
+						if (infoNetwork.getVisibility() == View.GONE) {
+							infoNetwork.setVisibility(View.VISIBLE);
+							setViewVisibility(infoNetworkLabel, View.VISIBLE);
 						}
 
-						if (antennaView != null && antennaView.getVisibility() != View.VISIBLE) {
-							antennaView.setVisibility(View.VISIBLE);
+						String networkName = informationCollector.getOperatorName();
+						if (networkName != null && !"()".equals(networkName)) {
+							infoCollector.setNetworkName(networkName);
+							infoNetwork.setText(networkName);
 						}
+						else {
+							infoCollector.setNetworkName(networkName);
+							infoNetwork.setVisibility(View.GONE);
+							setViewVisibility(infoNetworkLabel, View.GONE);
+						}
+					}
 
-						lastSignal = curSignal;
+					if (antennaView != null && antennaView.getVisibility() != View.VISIBLE) {
+						antennaView.setVisibility(View.VISIBLE);
+					}
 
-	                	NetworkFamilyEnum networkFamily = NetworkFamilyEnum.getFamilyByNetworkId(lastNetworkTypeString);
-	                	if (NetworkFamilyEnum.UNKNOWN.equals(networkFamily)) {
-	                		infoNetworkType.setVisibility(View.GONE);
-	                		infoCollector.setNetworkTypeString(lastNetworkTypeString);
-	                		infoNetworkType.setText(lastNetworkTypeString);	
-	                	}
-	                	else {
-	                		
-	                		if (lastNetworkTypeString.equals(NetworkFamilyEnum.WLAN.getNetworkFamily())) {
-	                			infoNetworkType.setVisibility(View.GONE);
+					lastSignal = curSignal;
+
+                	NetworkFamilyEnum networkFamily = NetworkFamilyEnum.getFamilyByNetworkId(lastNetworkTypeString);
+                	if (NetworkFamilyEnum.UNKNOWN.equals(networkFamily)) {
+                		setViewVisibility(infoNetworkType, View.GONE);
+                		infoCollector.setNetworkTypeString(lastNetworkTypeString);
+                		infoNetworkType.setText(lastNetworkTypeString);	
+                	}
+                	else {
+                		
+                		if (lastNetworkTypeString.equals(NetworkFamilyEnum.WLAN.getNetworkFamily())) {
+	                		setViewVisibility(infoNetworkType, View.GONE);
+                		}
+                		else {
+	                		setViewVisibility(infoNetworkType, View.VISIBLE);
+                			
+	                		if (lastNetworkTypeString.equals(networkFamily.getNetworkFamily())) {
+	                			infoCollector.setNetworkTypeString(lastNetworkTypeString);
+		                		setViewVisibility(infoNetworkType, View.GONE);
+		                		infoNetworkType.setText(lastNetworkTypeString);	                			
 	                		}
 	                		else {
-	                			infoNetworkType.setVisibility(View.VISIBLE);
-	                			
-		                		if (lastNetworkTypeString.equals(networkFamily.getNetworkFamily())) {
-		                			infoCollector.setNetworkTypeString(lastNetworkTypeString);
-			                		infoNetworkType.setText(lastNetworkTypeString);	                			
-		                		}
-		                		else {
-		                			infoCollector.setNetworkTypeString(networkFamily.getNetworkFamily() + "/" + lastNetworkTypeString);
-			                		infoNetworkType.setText(networkFamily.getNetworkFamily() + "/" + lastNetworkTypeString);
-		                		}	                		
+	                			infoCollector.setNetworkTypeString(networkFamily.getNetworkFamily() + "/" + lastNetworkTypeString);
+		                		infoNetworkType.setText(networkFamily.getNetworkFamily() + "/" + lastNetworkTypeString);
 	                		}	                		
-	                	}
-	                }
-	                else {
-		                curSignal = Integer.MIN_VALUE;
-		                lastSignal = curSignal;
+                		}	                		
+                	}
+                }
+                else {
+	                curSignal = Integer.MIN_VALUE;
+	                lastSignal = curSignal;
 //		                Log.d(DEBUG_TAG,"lastNetworkTypeString: " + lastNetworkTypeString);
-		                infoCollector.setSignal(lastSignal);
-		                infoCollector.setNetworkName(null);
-						infoNetworkType.setVisibility(View.GONE);
-						infoNetwork.setVisibility(View.GONE);
-						infoNetworkLabel.setVisibility(View.GONE);
-						infoSignalStrength.setVisibility(View.GONE);
-						infoSignalStrengthExtra.setVisibility(View.INVISIBLE);
-						if (antennaView != null && antennaView.getVisibility() != View.VISIBLE) {
-						       refreshAntennaImage(curSignal);
-						}
-	                }
-				}
-				else if (antennaView != null && antennaView.getVisibility() != View.VISIBLE) {
+	                infoCollector.setSignal(lastSignal);
+	                infoCollector.setNetworkName(null);
+            		setViewVisibility(infoNetworkType, View.GONE);
+            		setViewVisibility(infoNetwork, View.GONE);
+					setViewVisibility(infoNetworkLabel, View.GONE);
+					setViewVisibility(infoSignalStrength, View.GONE);
+					setViewVisibility(infoSignalStrengthExtra, View.INVISIBLE);
+					if (antennaView != null && antennaView.getVisibility() != View.VISIBLE) {
+					       refreshAntennaImage(curSignal);
+					}
+                }
+				
+				if (antennaView != null && antennaView.getVisibility() != View.VISIBLE) {
 //					Log.d(DEBUG_TAG,"lastNetworkTypeString: " + lastNetworkTypeString);
                 	curSignal = Integer.MIN_VALUE;
                 	lastSignal = curSignal;
@@ -501,8 +574,8 @@ public class RMBTMainMenuFragment extends Fragment
 					refreshAntennaImage(curSignal);
 				}
 				
-				infoCollector.setIp(ConfigHelper.getLastIp(getActivity()));
-				
+				//infoCollector.setIpv4(ConfigHelper.getLastIp(getActivity())); 
+
 				final NetworkInfoCollector netInfo = ((RMBTMainActivity) getActivity()).getNetworkInfoCollector();
 				if (netInfo != null) {
 					if (ConfigHelper.isIpPolling(getActivity())) {
@@ -520,7 +593,8 @@ public class RMBTMainMenuFragment extends Fragment
 					infoCollector.setHasControlServerConnection(netInfo.hasIpFromControlServer());
 					infoCollector.setCaptivePortalFound(netInfo.getCaptivePortalStatus().equals(CaptivePortalStatusEnum.FOUND));
 					infoCollector.refreshIpAndAntenna();
-					infoCollector.dispatchInfoChangedEvent(InfoCollectorType.IP, null, infoCollector.getIp());
+					infoCollector.dispatchInfoChangedEvent(InfoCollectorType.IPV4, null, infoCollector.getIpv4());
+					infoCollector.dispatchInfoChangedEvent(InfoCollectorType.IPV6, null, infoCollector.getIpv6());
 					
 					netInfo.onNetworkChange(getActivity(), null);
 				}
@@ -557,7 +631,7 @@ public class RMBTMainMenuFragment extends Fragment
 		int lastNetworkType = informationCollector.getNetwork();
 		String lastNetworkTypeString = Helperfunctions.getNetworkTypeName(lastNetworkType);
 		
-		if (lastNetworkType == TelephonyManager.NETWORK_TYPE_UNKNOWN || signal == Integer.MIN_VALUE)
+		if (lastNetworkType == TelephonyManager.NETWORK_TYPE_UNKNOWN) // || signal == Integer.MIN_VALUE)
 		    return R.drawable.signal_no_connection;
 		
 		boolean wlan = "WLAN".equals(lastNetworkTypeString);
@@ -566,11 +640,10 @@ public class RMBTMainMenuFragment extends Fragment
     	
     	double relativeSignal = -1d;
     	MinMax<Integer> signalBounds = NetworkUtil.getSignalStrengthBounds(signalType);
-    	//System.out.println("SIGNAL STRENGTH TYPE: " + signalType + " -> " + signalBounds + " / SIGNAL: " + signal);
+
         if (! (signalBounds.min == Integer.MIN_VALUE || signalBounds.max == Integer.MAX_VALUE)) {
             relativeSignal = (double)(signal - signalBounds.min) / (double)(signalBounds.max - signalBounds.min);
         }
-
 		//System.out.println("relativeSignal: " + relativeSignal + ", networkType: " + networkType + ", lastNetworkTypeString: " + lastNetworkTypeString);
 		if (relativeSignal < 0.25d) {
 			return (wlan ? R.drawable.signal_wlan_25 : R.drawable.signal_mobile_25);
@@ -592,6 +665,15 @@ public class RMBTMainMenuFragment extends Fragment
 		@Override
 		public void onInformationChanged(InfoCollectorType type, Object oldValue, Object newValue) {
 			switch (type) {
+			case CPU:
+				setViewText(infoCpuStat, percentFormat.format(newValue) + "%");
+				setViewTextColorResource(infoCpuStat, CpuMemClassificationEnum.classify((Float) newValue).getResId());
+				break;
+			case MEMORY:
+				setViewText(infoMemStat, percentFormat.format(newValue) + "%");
+				//setViewTextColorResource(infoMemStat, CpuMemClassificationEnum.classify((Float) newValue).getResId());
+				break;
+				
 			case LOCATION:
 				if (locationView != null) {
 					if (locationView.getVisibility() == View.INVISIBLE) {
@@ -613,16 +695,10 @@ public class RMBTMainMenuFragment extends Fragment
 				}
 				break;
 			case NETWORK_TYPE:
-				if (antennaView != null) {				
-					Integer signalRsrq = informationCollector.getSignalRsrq();
-					Integer signal = informationCollector.getSignal();
-					if (NetworkInfoCollector.getInstance().hasConnectionFromAndroidApi()) {
-						refreshAntennaImage(signalRsrq != null ? signalRsrq : (signal != null ? signal : Integer.MIN_VALUE));
-					}
-					else {
-						refreshAntennaImage(signalRsrq != null ? signalRsrq : (signal != null ? signal : Integer.MIN_VALUE));
-						//refreshAntennaImage(Integer.MIN_VALUE);
-					}
+				if (antennaView != null) {
+					//System.out.println("NETWORK_TYPE changed to: " + newValue);
+				    Integer signal = informationCollector.getSignal();
+				    refreshAntennaImage(signal != null ? signal : Integer.MIN_VALUE);
 				}
 				//no break; here!!
 				//if the network type or the network family changes, the same label TextView is used
@@ -665,60 +741,59 @@ public class RMBTMainMenuFragment extends Fragment
 //					infoSignalStrengthExtra.startAnimation(pulseAnimation);
 //				}
 				break;
-			case IP:
+			case IPV4:
+			case IPV6:
 				if (getActivity() != null) {
 					NetworkInfoCollector netInfo = ((RMBTMainActivity) getActivity()).getNetworkInfoCollector();
 					if (netInfo != null) {
 						if (netInfo.getPublicIpv4() != null) {
 							netInfo.setCaptivePortalStatus(CaptivePortalStatusEnum.NOT_FOUND);
 							infoValueListAdapterMap.get(OverlayType.IPV4).addElement(InfoOverlayEnum.IPV4_PUB);
+							infoValueListAdapterMap.get(OverlayType.IP).addElement(InfoOverlayEnum.IPV4_PUB, 1);
 						}
 						else {
 							infoValueListAdapterMap.get(OverlayType.IPV4).removeElement(InfoOverlayEnum.IPV4_PUB);
+							infoValueListAdapterMap.get(OverlayType.IP).removeElement(InfoOverlayEnum.IPV4_PUB);
 						}
 						
 						if (netInfo.getPublicIpv6() != null) {
 							netInfo.setCaptivePortalStatus(CaptivePortalStatusEnum.NOT_FOUND);
 							infoValueListAdapterMap.get(OverlayType.IPV6).addElement(InfoOverlayEnum.IPV6_PUB);
+							infoValueListAdapterMap.get(OverlayType.IP).addElement(InfoOverlayEnum.IPV6_PUB, 2);
 						}
 						else {
 							infoValueListAdapterMap.get(OverlayType.IPV6).removeElement(InfoOverlayEnum.IPV6_PUB);
+							infoValueListAdapterMap.get(OverlayType.IP).removeElement(InfoOverlayEnum.IPV6_PUB);
 						}
-
-						/*
-						 * 
-						Don't hide IP4/6 info if not found, instead display message: not available
-						
-						if (netInfo.hasPrivateIpv4()) {
-							infoValueListAdapterMap.get(OverlayType.IPV4).addElement(InfoOverlayEnum.IPV4);
-						}
-						else {
-							infoValueListAdapterMap.get(OverlayType.IPV4).removeElement(InfoOverlayEnum.IPV4);
-						}
-						
-						if (netInfo.hasPrivateIpv6()) {
-							infoValueListAdapterMap.get(OverlayType.IPV6).addElement(InfoOverlayEnum.IPV6);
-						}
-						else {
-							infoValueListAdapterMap.get(OverlayType.IPV4).removeElement(InfoOverlayEnum.IPV6);
-						}
-						*/
 						
 						//Log.d(DEDBUG_TAG, "IPv4: " + netInfo.getIpv4Status() + ", IPv6: " + netInfo.getIpv6Status());
-						if (ipv4View != null) {
-							//System.out.println("IP STATUS (v4): " + netInfo.getIpv4Status());
-							ipv4View.setImageResource(netInfo.getIpv4Status().getResourceId());
+						if (ipv4View != null && ipv6ProgressView != null) {
+							if (netInfo.getIpv4Status() == IpStatus.STATUS_NOT_AVAILABLE) {
+								ipv4ProgressView.setVisibility(View.VISIBLE);
+								ipv4View.setVisibility(View.GONE);
+							}
+							else {
+								ipv4ProgressView.setVisibility(View.GONE);
+								ipv4View.setVisibility(View.VISIBLE);
+								ipv4View.setImageResource(netInfo.getIpv4Status().getResourceId());
+							}
 						}
-						if (ipv6View != null) {
-							//System.out.println("IP STATUS (v6): " + netInfo.getIpv6Status());
-							ipv6View.setImageResource(netInfo.getIpv6Status().getResourceId());
+						if (ipv6View != null && ipv6ProgressView != null) {
+							if (netInfo.getIpv6Status() == IpStatus.STATUS_NOT_AVAILABLE) {
+								ipv6ProgressView.setVisibility(View.VISIBLE);
+								ipv6View.setVisibility(View.GONE);
+							}
+							else {
+								ipv6ProgressView.setVisibility(View.GONE);
+								ipv6View.setVisibility(View.VISIBLE);
+								ipv6View.setImageResource(netInfo.getIpv6Status().getResourceId());
+							}
 						}
 						
 						if (netInfo.getIpv4Status().equals(IpStatus.CONNECTED_NAT) 
 								|| netInfo.getIpv4Status().equals(IpStatus.CONNECTED_NO_NAT) 
 								|| netInfo.getIpv6Status().equals(IpStatus.CONNECTED_NAT) 
 								|| netInfo.getIpv6Status().equals(IpStatus.CONNECTED_NO_NAT)) {
-							antennaView.setAlpha(1f);
 						}
 					}
 				}
@@ -758,10 +833,12 @@ public class RMBTMainMenuFragment extends Fragment
 		if (!hasCaptivePortal) {
 			infoValueListAdapterMap.get(OverlayType.IPV4).removeElement(InfoOverlayEnum.CAPTIVE_PORTAL_STATUS);
 			infoValueListAdapterMap.get(OverlayType.IPV6).removeElement(InfoOverlayEnum.CAPTIVE_PORTAL_STATUS);
+			infoValueListAdapterMap.get(OverlayType.IP).removeElement(InfoOverlayEnum.CAPTIVE_PORTAL_STATUS);
 		}
 		else {
 			infoValueListAdapterMap.get(OverlayType.IPV4).addElement(InfoOverlayEnum.CAPTIVE_PORTAL_STATUS);
 			infoValueListAdapterMap.get(OverlayType.IPV6).addElement(InfoOverlayEnum.CAPTIVE_PORTAL_STATUS);
+			infoValueListAdapterMap.get(OverlayType.IP).addElement(InfoOverlayEnum.CAPTIVE_PORTAL_STATUS);
 		}
 	}
 
@@ -773,6 +850,14 @@ public class RMBTMainMenuFragment extends Fragment
 		public void onClick(View v) {
 			if (infoOverlay != null) {
 				switch (v.getId()) {
+				case R.id.title_page_stats_button:
+					infoOverlayTitle.setText(getResources().getText(OverlayType.CPU_MEM.getResourceId()));
+					infoOverlayList.setAdapter(infoValueListAdapterMap.get(OverlayType.CPU_MEM));
+					break;					
+				case R.id.title_page_ip_button:
+					infoOverlayTitle.setText(getResources().getText(OverlayType.IP.getResourceId()));
+					infoOverlayList.setAdapter(infoValueListAdapterMap.get(OverlayType.IP));
+					break;
 				case R.id.title_page_ipv4_button:
 					infoOverlayTitle.setText(getResources().getText(OverlayType.IPV4.getResourceId()));
 					infoOverlayList.setAdapter(infoValueListAdapterMap.get(OverlayType.IPV4));
@@ -792,9 +877,20 @@ public class RMBTMainMenuFragment extends Fragment
 					break;
 				}
 				//System.out.println("SHOWING INFO OVERLAY");
-				ipv4Button.setOnClickListener(detailHideOnClickListener);
-				ipv6Button.setOnClickListener(detailHideOnClickListener);
+				if (ipv4Button != null) {
+					ipv4Button.setOnClickListener(detailHideOnClickListener);
+				}
+				if (ipv6Button != null) {
+					ipv6Button.setOnClickListener(detailHideOnClickListener);
+				}
+				if (ipButton != null) {
+					ipButton.setOnClickListener(detailHideOnClickListener);
+				}
 				//antennaView.setOnClickListener(detailHideOnClickListener);
+		        if (cpuMemStatsButton != null) {
+		        	cpuMemStatsButton.setOnClickListener(detailHideOnClickListener);
+		        }
+		        
 				trafficButton.setOnClickListener(detailHideOnClickListener);
 				locationButton.setOnClickListener(detailHideOnClickListener);
 				infoOverlay.setVisibility(View.VISIBLE);
@@ -838,9 +934,18 @@ public class RMBTMainMenuFragment extends Fragment
 	 */
 	private void hideOverlayAndReenableOnClickListeners() {
 		infoOverlay.setVisibility(View.GONE);
-		ipv4Button.setOnClickListener(detailShowOnClickListener);
-		ipv6Button.setOnClickListener(detailShowOnClickListener);
-		//antennaView.setOnClickListener(detailShowOnClickListener);
+		if (ipv4Button != null) {
+			ipv4Button.setOnClickListener(detailShowOnClickListener);
+		}
+		if (ipv6Button != null) {
+			ipv6Button.setOnClickListener(detailShowOnClickListener);
+		}
+		if (ipButton != null) {
+			ipButton.setOnClickListener(detailShowOnClickListener);
+		}
+        if (cpuMemStatsButton != null) {
+        	cpuMemStatsButton.setOnClickListener(detailShowOnClickListener);
+        }
 		trafficButton.setOnClickListener(detailShowOnClickListener);
 		locationButton.setOnClickListener(detailShowOnClickListener);							
 	}
@@ -856,7 +961,6 @@ public class RMBTMainMenuFragment extends Fragment
 			switch (infoFlag) {
 			case NETWORK_CONNECTION_CHANGED:
 				if ((Boolean) newValue) {
-					antennaView.setAlpha(1f);
 					if (startButton != null && startButtonText != null) {
 						startButton.setAlpha(1f);
 						startButton.setEnabled(true);
@@ -864,7 +968,6 @@ public class RMBTMainMenuFragment extends Fragment
 					}
 				}
 				else {
-					antennaView.setAlpha(0.3f);
 					if (startButton != null && startButtonText != null) {
 						startButton.setAlpha(0.3f);
 						startButtonText.setAlpha(0.3f);
@@ -885,7 +988,8 @@ public class RMBTMainMenuFragment extends Fragment
 						}
 					}
 
-					infoCollector.dispatchInfoChangedEvent(InfoCollectorType.IP, infoCollector.getIp(), newValue);
+					infoCollector.dispatchInfoChangedEvent(InfoCollectorType.IPV4, infoCollector.getIpv4(), newValue);
+					infoCollector.dispatchInfoChangedEvent(InfoCollectorType.IPV6, infoCollector.getIpv6(), newValue);
 				}						
 			}
 		}
@@ -925,15 +1029,24 @@ public class RMBTMainMenuFragment extends Fragment
 		public void removeElement(InfoOverlayEnum e) {
 			if (this.infoList.contains(e)) {
 				//System.out.println("removing element: " + e);
-				this.infoList.remove(e);
+				this.infoList.remove(e);					
 				notifyDataSetChanged();
 			}
 		}
 		
 		public void addElement(InfoOverlayEnum e) {
+			addElement(e, Integer.MAX_VALUE);
+		}
+		
+		public void addElement(InfoOverlayEnum e, int index) {
 			if (!this.infoList.contains(e)) {
 				//System.out.println("adding element: " + e);
-				this.infoList.add(e);
+				if (index > this.infoList.size()) {
+					this.infoList.add(e);
+				}
+				else {
+					this.infoList.add(index, e);	
+				}
 				notifyDataSetChanged();
 			}
 		}
@@ -980,10 +1093,15 @@ public class RMBTMainMenuFragment extends Fragment
 		    case LOCATION_ACCURACY:
 		    	locationString = "";
 		    	if (infoCollector.getLocation() != null) { 
-		    		locationString = Helperfunctions.convertLocationAccuracy(getResources(), 
+		    		final int satellites;
+		    		if (infoCollector.getLocation().getExtras() != null)
+		    		    satellites = infoCollector.getLocation().getExtras().getInt("satellites");
+		    		else
+		    		    satellites = 0;
+                    locationString = Helperfunctions.convertLocationAccuracy(getResources(), 
 		    				infoCollector.getLocation().hasAccuracy(), 
 		    				infoCollector.getLocation().getAccuracy(),
-		    				infoCollector.getLocation().getExtras().getInt("satellites"));
+		    				satellites);
 		    	}
 	    		holder.value.setText(locationString);		    	
 		    	break;
@@ -1078,6 +1196,27 @@ public class RMBTMainMenuFragment extends Fragment
 		    		holder.value.setText("" + netInfo.getPrivateIpv4().isLoopbackAddress());
 		    	}
 		    	break;
+		    case CPU_CORES:
+		    	if (cpuStat != null) {
+		    		holder.value.setText("" + cpuStat.getLastCpuUsage().getNumCores());
+		    	}
+		    	break;
+		    case CPU_USAGE:
+	    		holder.value.setText("" + percentFormat.format(infoCollector.getCpuUsage()) + "%");
+		    	break;
+		    case MEM_USAGE:
+	    		holder.value.setText("" + percentFormat.format(infoCollector.getMemUsage()) + "%");
+		    	break;
+		    case MEM_FREE:
+		    	if (memInfo != null) {
+		    		holder.value.setText("" + memInfo.getFreeMem() + " kB");
+		    	}
+		    	break;
+		    case MEM_TOTAL:
+		    	if (memInfo != null) {
+		    		holder.value.setText("" + memInfo.getTotalMem() + " kB");
+		    	}
+		    	break;
 		    }
 		    return rowView;
 		    
@@ -1100,7 +1239,12 @@ public class RMBTMainMenuFragment extends Fragment
 		LOCATION_AGE(R.string.title_screen_info_overlay_location_age),
 		LOCATION_SOURCE(R.string.title_screen_info_overlay_location_source),
 		LOCATION_ALTITUDE(R.string.title_screen_info_overlay_location_altitude),
-		LOCATION(R.string.title_screen_info_overlay_location_position);
+		LOCATION(R.string.title_screen_info_overlay_location_position),
+		CPU_USAGE(R.string.title_screen_info_overlay_cpu_usage),
+		CPU_CORES(R.string.title_screen_info_overlay_cpu_cores),
+		MEM_USAGE(R.string.title_screen_info_overlay_mem_usage),
+		MEM_FREE(R.string.title_screen_info_overlay_mem_free),
+		MEM_TOTAL(R.string.title_screen_info_overlay_mem_total);
 		
 		protected final int resourceId;
 		protected final String title;
@@ -1184,5 +1328,38 @@ public class RMBTMainMenuFragment extends Fragment
         infoCollector.refresh();
         infoCollector.dispatchInfoChangedEvent(InfoCollectorType.DL_TRAFFIC, null, TrafficClassificationEnum.classify(interfaceTrafficGatherer.getRxRate()));
         infoCollector.dispatchInfoChangedEvent(InfoCollectorType.UL_TRAFFIC, null, TrafficClassificationEnum.classify(interfaceTrafficGatherer.getTxRate()));
+	}
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public InformationCollector getInformationCollector() {
+		return informationCollector;
+	}
+
+	public void setViewVisibility(View view, int visibility) {
+		if (view != null) {
+			view.setVisibility(visibility);
+		}
+	}
+	
+	public void setViewText(TextView view, String text) {
+		setViewText(view, text, null);
+	}
+
+	public void setViewTextColorResource(TextView view, int colorResId) {
+		if (view != null) {
+			view.setTextColor(getActivity().getResources().getColor(colorResId));
+		}
+	}
+	
+	public void setViewText(TextView view, String text, TextView alternativeView) {
+		if (view != null) {
+			view.setText(text);
+		}
+		else if (alternativeView != null) {
+			alternativeView.setText(alternativeView.getText() + " " + text);
+		}
 	}
 }

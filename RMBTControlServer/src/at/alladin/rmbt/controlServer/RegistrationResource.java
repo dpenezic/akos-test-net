@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,18 +39,28 @@ import org.restlet.resource.Post;
 
 import at.alladin.rmbt.db.Client;
 import at.alladin.rmbt.db.GeoLocation;
-import at.alladin.rmbt.db.Test_Server;
 import at.alladin.rmbt.shared.GeoIPHelper;
 import at.alladin.rmbt.shared.Helperfunctions;
 import at.alladin.rmbt.shared.ResourceManager;
 
+import com.google.common.base.Strings;
 import com.google.common.net.InetAddresses;
 
 public class RegistrationResource extends ServerResource
 {
+    static class TestServer
+    {
+        int id;
+        String name;
+        int port;
+        String address;
+    }
+    
+    
     @Post("json")
     public String request(final String entity)
     {
+    	long startTime = System.currentTimeMillis();
         final String secret = getContext().getParameters().getFirstValue("RMBT_SECRETKEY");
         
         addAllowOrigin();
@@ -66,6 +76,22 @@ public class RegistrationResource extends ServerResource
         final String clientIpString = InetAddresses.toAddrString(clientAddress);
         
         System.out.println(MessageFormat.format(labels.getString("NEW_REQUEST"), clientIpRaw));
+        
+        final String geoIpCountry = GeoIPHelper.lookupCountry(clientAddress);
+        // public_ip_asn
+        final Long asn = Helperfunctions.getASN(clientAddress);
+        // public_ip_as_name 
+        // country_asn (2 digit country code of AS, eg. AT or EU)
+        final String asName;
+        final String asCountry;
+        if (asn == null) {
+            asName = null;
+            asCountry =null;
+        }
+        else {
+            asName = Helperfunctions.getASName(asn);
+            asCountry = Helperfunctions.getAScountry(asn);
+        }
         
         if (entity != null && !entity.isEmpty())
             // try parse the string to a JSON object
@@ -181,74 +207,49 @@ public class RegistrationResource extends ServerResource
                             final String testUuid = UUID.randomUUID().toString();
                             final String testOpenUuid = UUID.randomUUID().toString();
                             
-                            int testServerId = 0;
-                            int testServerPort = 0;
-                            String testServerAddress = "";
-                            String testServerName = "";
                             boolean testServerEncryption = true; // default is
                                                                  // true
                             
-                            final Test_Server server;
-                            if (request.optString("client").equals("RMBTws")) {
-                            	server = getNearestServer(errorList, geolat, geolong, geotime, clientIpString, true);
-                            }
-                            else {
-                            	server = getNearestServer(errorList, geolat, geolong, geotime, clientIpString, false);
-                            }
-                            
-                            
-                            if (server != null)
-                            {
-                                
-                                testServerId = server.getUid();
-                                
-                                if (clientAddress instanceof Inet6Address)
-                                    testServerAddress = server.getWeb_address_ipv6();
-                                else if (clientAddress instanceof Inet4Address)
-                                    testServerAddress = server.getWeb_address_ipv4();
-                                else
-                                    testServerAddress = server.getWeb_address(); // does
-                                                                                 // this
-                                                                                 // really
-                                                                                 // make
-                                                                                 // sense?
-                                                                                 // ;)
-                                    
-                                // hack for android api <= 10 (2.3.x)
-                                // using encryption with test doesn't work
-                                if (request.has("plattform") && request.optString("plattform").equals("Android"))
-                                    if (request.has("api_level"))
+                            // hack for android api <= 10 (2.3.x)
+                            // using encryption with test doesn't work
+                            if (request.has("plattform") && request.optString("plattform").equals("Android"))
+                                if (request.has("api_level"))
+                                {
+                                    final String apiLevelString = request.optString("api_level");
+                                    try
                                     {
-                                        final String apiLevelString = request.optString("api_level");
-                                        try
-                                        {
-                                            final int apiLevel = Integer.parseInt(apiLevelString);
-                                            if (apiLevel <= 10)
-                                                testServerEncryption = false;
-                                        }
-                                        catch (final NumberFormatException e)
-                                        {
-                                        }
+                                        final int apiLevel = Integer.parseInt(apiLevelString);
+                                        if (apiLevel <= 10)
+                                            testServerEncryption = false;
                                     }
-                                
-                                // // DEBUG
-                                // testServerEncryption = false;
-                                
-                                // request.optString("plattform");
-                                if (testServerEncryption)
-                                    testServerPort = server.getPort_ssl();
-                                else
-                                    testServerPort = server.getPort();
-                                
-                                testServerName = server.getName() + " (" + server.getCity() + " / "
-                                        + server.getCountry() + ")";
-                                
-                            }
+                                    catch (final NumberFormatException e)
+                                    {
+                                    }
+                                }
+                            
+                            
+                            final String serverType;
+                            if (request.optString("client").equals("RMBTws"))
+                                serverType = "RMBTws";
                             else
-                                errorList.addError("ERROR_TEST_SERVER");
+                                serverType = "RMBT";
+                            
+                            final Boolean ipv6;
+                            if (clientAddress instanceof Inet6Address)
+                                ipv6 = true;
+                            else if (clientAddress instanceof Inet4Address)
+                                ipv6 = false;
+                            else // should never happen, unless ipv > 6 is available
+                                ipv6 = null;
+                            
+                            final TestServer server = getNearestServer(errorList, geolat, geolong, geotime, clientIpString,
+                                    asCountry, geoIpCountry, serverType, testServerEncryption, ipv6);
                             
                             try
                             {
+                                if (server == null)
+                                    throw new JSONException("could not find server");
+                                
                                 if (timeZoneId.isEmpty())
                                 {
                                     timeZoneId = Helperfunctions.getTimezoneId();
@@ -257,13 +258,14 @@ public class RegistrationResource extends ServerResource
                                 else
                                     timeWithZone = Helperfunctions.getTimeWithTimeZone(timeZoneId);
                                 
-                                answer.put("test_server_address", testServerAddress);
-                                answer.put("test_server_port", testServerPort);
-                                answer.put("test_server_name", testServerName);
+                                answer.put("test_server_address", server.address);
+                                answer.put("test_server_port", server.port);
+                                answer.put("test_server_name", server.name);
                                 answer.put("test_server_encryption", testServerEncryption);
                                 
-                                answer.put("test_duration", settings.getString("RMBT_DURATION"));
-                                answer.put("test_numthreads", settings.getString("RMBT_NUM_THREADS"));
+                                answer.put("test_duration", getSetting("rmbt_duration"));
+                                answer.put("test_numthreads", getSetting("rmbt_num_threads"));
+                                answer.put("test_numpings", getSetting("rmbt_num_pings"));
                                 
                                 answer.put("client_remote_ip", clientIpString);
                                 
@@ -318,11 +320,11 @@ public class RegistrationResource extends ServerResource
                                     // client_public_ip_anonymized
                                     st.setString(i++, Helperfunctions.anonymizeIp(clientAddress));
                                     // country_geoip (2digit country code derived from public IP of client)
-                                    st.setString(i++, GeoIPHelper.lookupCountry(clientAddress));
+                                    st.setString(i++, geoIpCountry);
                                     // server_id
-                                    st.setInt(i++, testServerId);
+                                    st.setInt(i++, server.id);
                                     // port
-                                    st.setInt(i++, testServerPort);
+                                    st.setInt(i++, server.port);
                                     // use_ssl
                                     st.setBoolean(i++, testServerEncryption);
                                     // timezone (of client)
@@ -330,9 +332,9 @@ public class RegistrationResource extends ServerResource
                                     // client_time (local time of client)
                                     st.setTimestamp(i++, clientTstamp, timeWithZone);
                                     // duration (requested)
-                                    st.setInt(i++, Integer.parseInt(settings.getString("RMBT_DURATION")));
+                                    st.setInt(i++, Integer.parseInt(getSetting("rmbt_duration")));
                                     // num_threads_requested 
-                                    st.setInt(i++, Integer.parseInt(settings.getString("RMBT_NUM_THREADS")));
+                                    st.setInt(i++, Integer.parseInt(getSetting("rmbt_num_threads")));
                                     // status (of test)
                                     st.setString(i++, "STARTED"); //was "RUNNING" before
                                     // software_revision (of client)
@@ -345,26 +347,16 @@ public class RegistrationResource extends ServerResource
                                         st.setLong(i++, testCounter);
                                     // client_previous_test_status (outcome of previous test)
                                     st.setString(i++, request.optString("previousTestStatus", null));
-                                    // public_ip_asn
-                                    final Long asn = Helperfunctions.getASN(clientAddress);
-                                    // public_ip_as_name 
-                                    // country_asn (2 digit country code of AS, eg. AT or EU)
-                                    final String asName;
-                                    final String asCountry;
-                                    if (asn == null) {
-                                        st.setNull(i++, Types.BIGINT);
-                                        asName = null;
-                                        asCountry =null;
-                                    }
-                                    else {
-                                        st.setLong(i++, asn);
-                                        asName = Helperfunctions.getASName(asn);
-                                        asCountry = Helperfunctions.getAScountry(asn);
-                                    }
+                                    // AS name
+                                    if (asn == null)
+                                    	st.setNull(i++, Types.BIGINT);
+                                    else
+                                    	st.setLong(i++, asn);
                                     if (asName == null)
                                         st.setNull(i++, Types.VARCHAR);
                                     else
                                         st.setString(i++, asName);
+                                    // AS country
                                     if (asCountry == null)
                                         st.setNull(i++, Types.VARCHAR);
                                     else
@@ -517,6 +509,9 @@ public class RegistrationResource extends ServerResource
         }
         
         answerString = answer.toString();
+        long elapsedTime = System.currentTimeMillis() - startTime;
+        System.out.println(MessageFormat.format(labels.getString("NEW_REQUEST_SUCCESS"), clientIpRaw, Long.toString(elapsedTime)));
+        
         return answerString;
     }
     
@@ -533,28 +528,66 @@ public class RegistrationResource extends ServerResource
      * @param clientIp
      * @return
      */
-    private Test_Server getNearestServer(final ErrorList errorList, final double geolat, final double geolong,
-            final long geotime, final String clientIp, final boolean websocket)
+    private TestServer getNearestServer(final ErrorList errorList, final double geolat, final double geolong,
+            final long geotime, final String clientIp, final String asCountry, final String geoIpCountry, final String serverType,
+            final boolean ssl, final Boolean ipv6)
     {
         
         // TODO find nearest Server to GeoLocation or IP address
         
-        final Test_Server result = new Test_Server(conn);
-        if (websocket) {
-        	result.getServerForWebsocketConnection();
-        }
-        else {
-        	result.getServerByUid(1);
-        }
-        if (result.hasError())
+        final String sql = "SELECT * FROM test_server"
+                + " WHERE active"
+                + " AND server_type = ?"
+                + " AND (country = ? OR country = 'any' OR country IS NULL)"
+                + " ORDER BY"
+                + " (country != 'any' AND country IS NOT NULL) DESC,"
+                + " priority,"
+                + " random() * weight DESC"
+                + " LIMIT 1";
+                
+                //+ " ST_Distance(ST_TRANSFORM(ST_SetSRID(ST_Point(?, ?), 4326), 900913))";??
+        
+        try (PreparedStatement ps = conn.prepareStatement(sql))
         {
-            errorList.addError(result.getError());
+            
+            // use geoIP with fallback to AS
+            String country = asCountry;
+            if (! Strings.isNullOrEmpty(geoIpCountry))
+                country = geoIpCountry;
+            
+            int i = 1;
+            ps.setString(i++, serverType);
+            
+            ps.setString(i++, country);
+            
+            try (ResultSet rs = ps.executeQuery())
+            {
+                if (! rs.next())
+                    return null;
+                final String address;
+                if (ipv6 == null)
+                    address = rs.getString("web_address");
+                else if (ipv6)
+                    address = rs.getString("web_address_ipv6");
+                else
+                    address = rs.getString("web_address_ipv4");
+                
+                final TestServer result = new TestServer();
+                
+                result.id = rs.getInt("uid");
+                result.address = address;
+                result.port = rs.getInt(ssl ? "port_ssl" : "port");
+                result.name = rs.getString("name") + " (" + rs.getString("city") + ")";
+                
+                return result;
+            }
+        }
+        catch (SQLException e)
+        {
+            e.printStackTrace();
             return null;
         }
-        else if (result.getUid() == 0)
-            return null;
-        else
-            return result;
+        
     }
     
 }

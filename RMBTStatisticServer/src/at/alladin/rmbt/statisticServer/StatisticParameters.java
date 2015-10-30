@@ -20,7 +20,11 @@ import java.io.Serializable;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-public class StatisticParameters implements Serializable
+import com.google.common.base.Strings;
+import com.google.common.hash.Funnel;
+import com.google.common.hash.PrimitiveSink;
+
+public class StatisticParameters implements Serializable, Funnel<StatisticParameters>
 {
     private static final long serialVersionUID = 1L;
     
@@ -140,6 +144,22 @@ public class StatisticParameters implements Serializable
     }
 
     @Override
+    public void funnel(StatisticParameters o, PrimitiveSink into)
+    {
+        into
+            .putUnencodedChars(o.getClass().getCanonicalName())
+            .putChar(':')
+            .putUnencodedChars(Strings.nullToEmpty(o.lang))
+            .putFloat(o.quantile)
+            .putInt(o.duration)
+            .putUnencodedChars(Strings.nullToEmpty(o.type))
+            .putInt(o.maxDevices)
+            .putUnencodedChars(Strings.nullToEmpty(o.networkTypeGroup))
+            .putDouble(o.accuracy)
+            .putUnencodedChars(Strings.nullToEmpty(o.country));
+    }
+    
+    @Override
     public int hashCode()
     {
         final int prime = 31;
@@ -154,7 +174,7 @@ public class StatisticParameters implements Serializable
         result = prime * result + ((country == null) ? 0 : country.hashCode());
         return result;
     }
-
+    
     @Override
     public boolean equals(Object obj)
     {
@@ -200,6 +220,5 @@ public class StatisticParameters implements Serializable
             return false;
         return true;
     }
-    
-    
+
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ import org.restlet.Application;
 import org.restlet.Context;
 import org.restlet.Restlet;
 import org.restlet.routing.Router;
-import org.restlet.routing.Template;
 
 
 public class ControlServer extends Application
@@ -69,6 +68,9 @@ public class ControlServer extends Application
         
         router.attach("/ip", IpResource.class);
         
+        router.attach("/status", StatusResource.class);
+        
+        
         // send history list to client
         router.attach("/history", HistoryResource.class);
         
@@ -95,7 +97,27 @@ public class ControlServer extends Application
         
         // administrative resources (access restrictions might be applied to /admin/ 
         router.attach("/admin/qosObjectives", QualityOfServiceExportResource.class);
-                        
+        
+        // logging resource
+        router.attach("/log", LogResource.class);
+
+        
+        /*
+         * 
+         * 	ResultStatusFilter f = new ResultStatusFilter();
+        	f.setNext(router);
+        */
+        
+        /*
+         * 
+         * use for request time measurements:
+
+	        TimerFilter filter = new TimerFilter();
+	        filter.setNext(router);
+	        
+	        return filter;
+        */
+        
         return router;
     }
     

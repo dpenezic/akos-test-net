@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,7 +61,6 @@ public class ControlServerConnection
     
     private Context context;
     
-    @SuppressWarnings("unused")
     private String errorMsg = "";
     
     private boolean hasError = false;
@@ -136,8 +135,7 @@ public class ControlServerConnection
     }
     
     private void setupServer(final Context context, final boolean useMapServerPath)
-    {
-        // Creating JSON Parser instance
+    {    	 
         jParser = new JSONParser();
         hasError = false;
         
@@ -172,7 +170,7 @@ public class ControlServerConnection
     private JSONArray sendRequest(final URI hostUrl, final JSONObject requestData, final String fieldName)
     {
         // getting JSON string from URL
-        //Log.d(DEBUG_TAG, "request to "+ hostUrl);
+        //Log.d(DEBUG_TAG, "request to "+ hostUrl);    	
         final JSONObject response = jParser.sendJSONToUrl(hostUrl, requestData);
         
         if (response != null)
@@ -180,27 +178,13 @@ public class ControlServerConnection
             {
                 final JSONArray errorList = response.optJSONArray("error");
                 
-                //System.out.println(requestData.toString(4));
-                
-                //System.out.println(response.toString(4));
-                
                 if (errorList == null || errorList.length() == 0)
                 {
-                    
-                	
-                	if (fieldName != null) {
-                        return response.getJSONArray(fieldName);	
-                	}
-                	else {
-                		JSONArray array = new JSONArray();
-                		array.put(response);
-                		return array;
-                	}
-                    
+                	return getResponseField(response, fieldName);
                 }
                 else
                 {
-                    //hasError = true;
+                    hasError = true;
                     for (int i = 0; i < errorList.length(); i++)
                     {
                         
@@ -208,6 +192,10 @@ public class ControlServerConnection
                             errorMsg += "\n";
                         errorMsg += errorList.getString(i);
                     }
+                  
+                    System.out.println(errorMsg);
+                    
+                    //return getResponseField(response, fieldName);
                 }
                 
                 // }
@@ -226,6 +214,17 @@ public class ControlServerConnection
         
         return null;
         
+    }
+    
+    private static JSONArray getResponseField(JSONObject response, String fieldName) throws JSONException {
+       	if (fieldName != null) {
+            return response.getJSONArray(fieldName);	
+    	}
+    	else {
+    		JSONArray array = new JSONArray();
+    		array.put(response);
+    		return array;
+    	}
     }
     
     public JSONArray requestNews(final long lastNewsUid)
@@ -254,6 +253,26 @@ public class ControlServerConnection
         
         return sendRequest(hostUrl, requestData, "news");
         
+    }
+    
+    public JSONArray sendLogReport(final JSONObject requestData)  {        
+        final URI hostUrl = getUri(Config.RMBT_LOG_HOST_URL);
+        
+        try
+        {
+            Log.i(DEBUG_TAG,"LOG request to " + hostUrl);
+
+            InformationCollector.fillBasicInfo(requestData, context);
+            
+            requestData.put("uuid", getUUID());
+        }
+        catch (final Exception e)
+        {
+            hasError = true;
+            errorMsg = "Error gernerating request";
+		}
+        
+        return sendRequest(hostUrl, requestData, null);	
     }
     
     public JSONArray requestIp(boolean isIpv6)

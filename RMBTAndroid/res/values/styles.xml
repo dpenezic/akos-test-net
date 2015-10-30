@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Copyright 2013-2014 alladin-IT GmbH
+  Copyright 2013-2015 alladin-IT GmbH
   
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -317,9 +317,17 @@
 
     <style name="QoSTheme.TextView.TitleXLarge.White" parent="@android:style/TextAppearance.Medium">
         <item name="android:textColor">#ffffff</item>
-        <item name="android:typeface">sans</item>        
+        <item name="android:typeface">sans</item>       
         <item name="android:textSize">22sp</item>
 	</style>
+	
+	<style name="QoSTheme.TextView.StartButton.White" parent="@android:style/TextAppearance.Medium">
+        <item name="android:textColor">@color/title_page_start_button_foreground</item>
+        <item name="android:typeface">sans</item>
+        <item name="android:textStyle">normal</item>        
+        <item name="android:textSize">32sp</item>
+	</style>
+    
     
     <style name="QoSTheme.TextView.Medium.Blue" parent="@android:style/TextAppearance.Small">
         <item name="android:textColor">#006398</item>
@@ -328,6 +336,11 @@
 
     <style name="QoSTheme.TextView.Medium.White" parent="@android:style/TextAppearance.Small">
         <item name="android:textColor">#ffffff</item>
+        <item name="android:typeface">sans</item>        
+	</style>
+
+    <style name="QoSTheme.TextView.Medium.TitlePage" parent="@android:style/TextAppearance.Small">
+        <item name="android:textColor">@color/titlepage_stats_foreground</item>
         <item name="android:typeface">sans</item>        
 	</style>
     	
@@ -344,6 +357,12 @@
         <item name="android:textSize">13sp</item>
         <!-- <item name="android:lineSpacingExtra">2dp</item> -->
         <item name="android:textColor">#d2dde2</item>
+    </style>
+    
+	<style name="QoSTheme.TextView.Result.ClassificationItem" parent="@android:style/TextAppearance.Small">
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:typeface">sans</item>
+        <item name="android:textSize">16sp</item>
     </style>
     
 </resources>

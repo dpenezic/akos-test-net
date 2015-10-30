@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Copyright 2013-2014 alladin-IT GmbH
+  Copyright 2013-2015 alladin-IT GmbH
   
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -92,6 +92,12 @@
     
     <string name="preferences_dev_map_ssl">Map-Server SSL</string>
     <string name="preferences_dev_map_ssl_sum">Verschlüsselte Verbindung zum Map-Server</string>
+    
+    <string name="preferences_dev_qos_ssl">QoS Server SSL</string>
+    <string name="preferences_dev_qos_ssl_sum">Verwende verschlüsselte Verbindung zum QoS-Server</string>
+    <string name="preferences_dev_debug_sysout">Speichere Fehlermeldungen</string>
+    <string name="preferences_dev_debug_sysout_sum">Speichere Fehlermeldungen im "qosdebug" Verzeichnis</string>
+    <string name="preferences_category_developer_debug">Debugging</string>
     
     <string name="menu_button_start">START</string>
     <string name="menu_button_title_page">Startseite</string>

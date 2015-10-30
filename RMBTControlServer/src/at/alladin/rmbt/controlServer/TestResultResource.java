@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,6 @@ import org.restlet.resource.Post;
 
 import at.alladin.rmbt.db.Client;
 import at.alladin.rmbt.db.Test;
-import at.alladin.rmbt.db.Test_Server;
 import at.alladin.rmbt.db.fields.Field;
 import at.alladin.rmbt.db.fields.TimestampField;
 import at.alladin.rmbt.db.fields.UUIDField;
@@ -47,6 +46,7 @@ public class TestResultResource extends ServerResource
     @Post("json")
     public String request(final String entity)
     {
+    	long startTime = System.currentTimeMillis();
         addAllowOrigin();
         
         JSONObject request = null;
@@ -55,7 +55,8 @@ public class TestResultResource extends ServerResource
         final JSONObject answer = new JSONObject();
         String answerString;
         
-        System.out.println(MessageFormat.format(labels.getString("NEW_TESTRESULT"), getIP()));
+        final String clientIpRaw = getIP();
+        System.out.println(MessageFormat.format(labels.getString("NEW_TESTRESULT"), clientIpRaw));
         
         if (entity != null && !entity.isEmpty())
             // try parse the string to a JSON object
@@ -82,12 +83,10 @@ public class TestResultResource extends ServerResource
                 if (conn != null)
                 {
                     final Client client = new Client(conn);
-                    final Test_Server server = new Test_Server(conn);
                     final Test test = new Test(conn);
                     
                     final String testUuid = request.optString("test_uuid");
                     if (testUuid != null && test.getTestByUuid(UUID.fromString(testUuid)) > 0
-                            && server.getServerByUid(test.getField("server_id").intValue())
                             && client.getClientByUid(test.getField("client_id").intValue())
                             && "FINISHED".equals(test.getField("status").toString()))
                     {
@@ -130,7 +129,7 @@ public class TestResultResource extends ServerResource
                                 labels.getString("RESULT_DOWNLOAD_UNIT"));
                         singleItem.put("value", downloadString);
                         singleItem.put("classification",
-                                Classification.classify(Classification.THRESHOLD_DOWNLOAD, fieldDown.intValue()));
+                                Classification.classify(classification.THRESHOLD_DOWNLOAD, fieldDown.intValue()));
                         
                         jsonItemList.put(singleItem);
                         
@@ -141,7 +140,7 @@ public class TestResultResource extends ServerResource
                                 format.format(fieldUp.doubleValue() / 1000d), labels.getString("RESULT_UPLOAD_UNIT"));
                         singleItem.put("value", uploadString);
                         singleItem.put("classification",
-                                Classification.classify(Classification.THRESHOLD_UPLOAD, fieldUp.intValue()));
+                                Classification.classify(classification.THRESHOLD_UPLOAD, fieldUp.intValue()));
                         
                         jsonItemList.put(singleItem);
                         
@@ -155,7 +154,7 @@ public class TestResultResource extends ServerResource
                         			labels.getString("RESULT_PING_UNIT"));
                         	singleItem.put("value", pingString);
                         	singleItem.put("classification",
-                        			Classification.classify(Classification.THRESHOLD_PING, fieldPing.longValue()));
+                        			Classification.classify(classification.THRESHOLD_PING, fieldPing.longValue()));
 
                         	jsonItemList.put(singleItem);
                         }
@@ -169,8 +168,8 @@ public class TestResultResource extends ServerResource
                         {
                         	if (lteRsrpField.isNull()) {  // only RSSI value, output RSSI to JSON  
                         		final int signalValue = signalField.intValue();
-                                final int[] threshold = networkType == 99 || networkType == 0 ? Classification.THRESHOLD_SIGNAL_WIFI
-                                       : Classification.THRESHOLD_SIGNAL_MOBILE;
+                                final int[] threshold = networkType == 99 || networkType == 0 ? classification.THRESHOLD_SIGNAL_WIFI
+                                       : classification.THRESHOLD_SIGNAL_MOBILE;
                                 singleItem = new JSONObject();
                                 singleItem.put("title", labels.getString("RESULT_SIGNAL"));
                                 signalString = signalValue + " " + labels.getString("RESULT_SIGNAL_UNIT");
@@ -179,7 +178,7 @@ public class TestResultResource extends ServerResource
                         	}
                         	else  { // use RSRP value else (RSRP value has priority if both are available (e.g. 3G/4G-test))
                         		final int signalValue = lteRsrpField.intValue();
-                                final int[] threshold = Classification.THRESHOLD_SIGNAL_RSRP;
+                                final int[] threshold = classification.THRESHOLD_SIGNAL_RSRP;
                                 singleItem = new JSONObject();
                                 singleItem.put("title", labels.getString("RESULT_SIGNAL_RSRP"));
                                 signalString = signalValue + " " + labels.getString("RESULT_SIGNAL_UNIT");
@@ -250,16 +249,31 @@ public class TestResultResource extends ServerResource
                         
                         final Field latField = test.getField("geo_lat");
                         final Field longField = test.getField("geo_long");
+                        boolean includeLocation = false;
                         final Field accuracyField = test.getField("geo_accuracy");
                         if (!(latField.isNull() || longField.isNull() || accuracyField.isNull()))
                         {
                             final double accuracy = accuracyField.doubleValue();
-                            if (accuracy < Double.parseDouble(settings.getString("RMBT_GEO_ACCURACY_BUTTON_LIMIT")))
+                            if (accuracy < Double.parseDouble(getSetting("rmbt_geo_accuracy_button_limit", lang)))
                             {
+                            	includeLocation = true;
                                 jsonItem.put("geo_lat", latField.doubleValue());
                                 jsonItem.put("geo_long", longField.doubleValue());
                             }
                         }
+                        
+                        //geo location
+                        JSONObject locationJson = TestResultDetailResource.getGeoLocation(this, test, settings, conn, labels);
+                        if (locationJson != null) {
+                        	if (locationJson.has("location")) {
+                        		jsonItem.put("location", locationJson.getString("location"));
+                        	}
+                        	if (locationJson.has("motion")) {
+                        		jsonItem.put("motion", locationJson.getString("motion"));
+                        	}                        	
+                        }
+                        
+                        resultList.put(jsonItem); 
                         
                         final Field zip_code = test.getField("zip_code");
                         if (! zip_code.isNull())
@@ -305,7 +319,13 @@ RESULT_SHARE_TEXT_PROVIDER_ADD = Operator: {0}\n
                         	}    
                             else {                            //add RSRP
                                 shareTextField4 = MessageFormat.format(labels.getString("RESULT_SHARE_TEXT_RSRP_ADD"), signalString);
-                            }		
+                            }
+                        String shareLocation = "";
+                        if (includeLocation  && locationJson != null) {             	
+                        	
+                        	shareLocation = MessageFormat.format(labels.getString("RESULT_SHARE_TEXT_LOCATION_ADD"), 
+                        			locationJson.getString("location")); 	
+                        }
 
                         final String shareText = MessageFormat.format(labels.getString("RESULT_SHARE_TEXT"),
                                 timeString,                   //field 0
@@ -320,26 +340,19 @@ RESULT_SHARE_TEXT_PROVIDER_ADD = Operator: {0}\n
                                 		mobileNetworkString), //field 7
                                 platformString,               //field 8
                                 modelString,                  //field 9
+                                //dz add location
+                                shareLocation,				  //field 10
                                 getSetting("url_open_data_prefix", lang) +
-                                openTestUUID);                //field 10
+                                openTestUUID);                //field 11
                         jsonItem.put("share_text", shareText);
                         
+                        final String shareSubject = MessageFormat.format(labels.getString("RESULT_SHARE_SUBJECT"),
+                                timeString                    //field 0
+                                );
+                        jsonItem.put("share_subject", shareSubject);
+                        
                         jsonItem.put("network_type", networkType);
-                        
-                        
-                        //geo location
-                        JSONObject locationJson = TestResultDetailResource.getGeoLocation(test, settings, conn, labels);
-                        if (locationJson != null) {
-                        	if (locationJson.has("location")) {
-                        		jsonItem.put("location", locationJson.getString("location"));
-                        	}
-                        	if (locationJson.has("motion")) {
-                        		jsonItem.put("motion", locationJson.getString("motion"));
-                        	}                        	
-                        }
-                        
-                        resultList.put(jsonItem);
-                        
+                                                
                         if (resultList.length() == 0)
                             errorList.addError("ERROR_DB_GET_TESTRESULT");
                         // errorList.addError(MessageFormat.format(labels.getString("ERROR_DB_GET_CLIENT"),
@@ -373,6 +386,9 @@ RESULT_SHARE_TEXT_PROVIDER_ADD = Operator: {0}\n
         }
         
         answerString = answer.toString();
+        
+        long elapsedTime = System.currentTimeMillis() - startTime;
+        System.out.println(MessageFormat.format(labels.getString("NEW_TESTRESULT_SUCCESS"), clientIpRaw, Long.toString(elapsedTime)));
         
         return answerString;
     }

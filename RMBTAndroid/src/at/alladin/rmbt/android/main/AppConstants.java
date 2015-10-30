@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,13 @@
 package at.alladin.rmbt.android.main;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
+import android.content.Context;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager.NameNotFoundException;
+import android.os.Build;
 import at.alladin.openrmbt.android.R;
 
 public class AppConstants {
@@ -37,6 +42,9 @@ public class AppConstants {
 	public final static String PAGE_TITLE_TERMS_CHECK = "tegetrms_check";
 	public final static String PAGE_TITLE_HELP = "help";
 	public final static String PAGE_TITLE_STATISTICS = "statistics";
+	public final static String PAGE_TITLE_NETSTAT = "netstat";
+	public final static String PAGE_TITLE_LOG = "log";
+	public final static String PAGE_TITLE_CHECK_INFORMATION_COMMISSIONER = "information_commissioner";
 	public final static String BACK_PRESSED = "back_pressed";
 	
 	public final static Map<String, Integer> TITLE_MAP;
@@ -58,5 +66,24 @@ public class AppConstants {
 		TITLE_MAP.put(PAGE_TITLE_TEST_DETAIL_QOS, R.string.page_title_qos_result);
 		TITLE_MAP.put(PAGE_TITLE_STATISTICS, R.string.page_title_statistics);
 		TITLE_MAP.put(PAGE_TITLE_NDT_CHECK, R.string.terms);
+		TITLE_MAP.put(PAGE_TITLE_NETSTAT, R.string.menu_button_netstat);
+		TITLE_MAP.put(PAGE_TITLE_CHECK_INFORMATION_COMMISSIONER, R.string.page_title_information_commissioner);
+	}
+	
+	/**
+	 * 
+	 * @param context
+	 * @return
+	 */
+	public static String getUserAgentString(Context context) {
+		PackageInfo pInfo;
+		try {
+			pInfo = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
+			return "SpecureNetTest/2.0 (Android; " + Locale.getDefault().toString()  + "; API" + Build.VERSION.SDK_INT + ") AkosTestNet/" + pInfo.versionCode;
+		} catch (NameNotFoundException e) {
+			e.printStackTrace();
+		}
+		
+		return null;
 	}
 }

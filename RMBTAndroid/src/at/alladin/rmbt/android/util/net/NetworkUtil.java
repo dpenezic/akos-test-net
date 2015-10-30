@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ public class NetworkUtil {
 	/**
 	 * 
 	 */
-	public static final String WALLED_GARDEN_URL = "http://webtest.netztest.at/generate_204";
+	public static final String WALLED_GARDEN_URL = "generate_204";
 	
 	/**
 	 * 

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,27 +40,39 @@ import org.restlet.resource.Post;
 import at.alladin.rmbt.db.Client;
 import at.alladin.rmbt.db.Test;
 import at.alladin.rmbt.db.TestNdt;
-import at.alladin.rmbt.db.Test_Server;
 import at.alladin.rmbt.db.fields.Field;
 import at.alladin.rmbt.db.fields.TimestampField;
 import at.alladin.rmbt.shared.Helperfunctions;
 import at.alladin.rmbt.shared.ResourceManager;
+import at.alladin.rmbt.shared.Settings;
 import at.alladin.rmbt.shared.SignificantFormat;
+
+import com.google.common.base.Strings;
 
 public class TestResultDetailResource extends ServerResource
 {
+	protected boolean optionWithKeys = false;
+	
+	protected final String OPTION_WITH_KEYS = "WITH_KEYS";
+	
     private JSONObject addObject(final JSONArray array, final String key) throws JSONException
     {
         final JSONObject newObject = new JSONObject();
-        newObject.put("title", getKeyTranslation(key));
+       	newObject.put("title", getKeyTranslation(key));
+       	
+       	if (optionWithKeys) {
+       		newObject.put("key", key);
+       	}
+       	
         array.put(newObject);
         return newObject;
     }
     
     private void addString(final JSONArray array, final String title, final String value) throws JSONException
     {
-        if (value != null && !value.isEmpty())
+        if (value != null && !value.isEmpty()) {
             addObject(array, title).put("value", value);
+        }
     }
     
     private void addString(final JSONArray array, final String title, final Field field) throws JSONException
@@ -75,11 +87,11 @@ public class TestResultDetailResource extends ServerResource
             addObject(array, title).put("value", field.intValue());
     }
     
-    private String getKeyTranslation(final String key)
+    private String getTranslation(final String prefix, final String key)
     {
         try
         {
-            return labels.getString("key_" + key);
+            return labels.getString(prefix + "_" + key);
         }
         catch (final MissingResourceException e)
         {
@@ -87,9 +99,15 @@ public class TestResultDetailResource extends ServerResource
         }
     }
     
+    private String getKeyTranslation(final String key)
+    {
+        return getTranslation("key", key);
+    }
+    
     @Post("json")
     public String request(final String entity)
     {
+    	long startTime = System.currentTimeMillis();
         addAllowOrigin();
         
         JSONObject request = null;
@@ -98,7 +116,8 @@ public class TestResultDetailResource extends ServerResource
         final JSONObject answer = new JSONObject();
         String answerString;
         
-        System.out.println(MessageFormat.format(labels.getString("NEW_TESTRESULT_DETAIL"), getIP()));
+        final String clientIpRaw = getIP();
+        System.out.println(MessageFormat.format(labels.getString("NEW_TESTRESULT_DETAIL"), clientIpRaw));
         
         if (entity != null && !entity.isEmpty())
             // try parse the string to a JSON object
@@ -107,6 +126,17 @@ public class TestResultDetailResource extends ServerResource
                 request = new JSONObject(entity);
                 
                 String lang = request.optString("language");
+                JSONArray options = request.optJSONArray("options");
+                if (options != null) {
+                	for (int i = 0; i < options.length(); i++) {
+                		final String op = options.optString(i, null);
+                		if (op != null) {
+                			if (OPTION_WITH_KEYS.equals(op.toUpperCase(Locale.US))) {
+                				optionWithKeys = true;
+                			}
+                		}
+                	}
+                }
                 
                 // Load Language Files for Client
                 
@@ -126,13 +156,11 @@ public class TestResultDetailResource extends ServerResource
                 {
                     
                     final Client client = new Client(conn);
-                    final Test_Server server = new Test_Server(conn);
                     final Test test = new Test(conn);
                     TestNdt ndt = new TestNdt(conn);
                     
                     final String testUuid = request.optString("test_uuid");
                     if (testUuid != null && test.getTestByUuid(UUID.fromString(testUuid)) > 0
-                            && server.getServerByUid(test.getField("server_id").intValue())
                             && client.getClientByUid(test.getField("client_id").intValue()))
                     {
                         
@@ -229,7 +257,7 @@ public class TestResultDetailResource extends ServerResource
                         			Helperfunctions.getNetworkTypeName(networkTypeField.intValue()));
                         
                         // geo-location
-                        JSONObject locationJson = getGeoLocation(test, settings, conn, labels);
+                        JSONObject locationJson = getGeoLocation(this, test, settings, conn, labels);
                         
                         if (locationJson != null) {
                         	if (locationJson.has("location")) {
@@ -262,6 +290,35 @@ public class TestResultDetailResource extends ServerResource
                             	addString(resultList, "zip_code", zipCode);
                         }
                         
+                        final Field dataField = test.getField("data");
+                        if (! Strings.isNullOrEmpty(dataField.toString()))
+                        {
+                            final JSONObject data = new JSONObject(dataField.toString());
+                            
+                            if (data.has("region"))
+                                addString(resultList, "region", data.getString("region"));
+                            if (data.has("municipality"))
+                                addString(resultList, "municipality", data.getString("municipality"));
+                            if (data.has("settlement"))
+                                addString(resultList, "settlement", data.getString("settlement"));
+                            if (data.has("whitespace"))
+                                addString(resultList, "whitespace", data.getString("whitespace"));
+                            
+                            if (data.has("cell_id"))
+                                addString(resultList, "cell_id", data.getString("cell_id"));
+                            if (data.has("cell_name"))
+                                addString(resultList, "cell_name", data.getString("cell_name"));
+                            if (data.has("cell_id_multiple") && data.getBoolean("cell_id_multiple"))
+                                addString(resultList, "cell_id_multiple", getTranslation("value" , "cell_id_multiple"));
+                        }
+                        
+                        final Field speedTestDurationField = test.getField("speed_test_duration");
+                        if (!speedTestDurationField.isNull()) {
+                        	final String speedTestDuration = format.format(speedTestDurationField.doubleValue() / 1000d);
+                        	addString(resultList, "speed_test_duration",
+                        			String.format("%s %s", speedTestDuration, labels.getString("RESULT_DURATION_UNIT")));
+                        }
+                        
                         // public client ip (private)
                         addString(resultList, "client_public_ip", test.getField("client_public_ip"));
 
@@ -278,8 +335,8 @@ public class TestResultDetailResource extends ServerResource
                         //TODO replace provider-information by more generic information
                         addString(resultList, "provider", test.getField("provider_id_name"));
                         
-                        // local ip of client (or info private ip) (private)
-                        addString(resultList, "client_local_ip", test.getField("client_local_ip"));
+                        // type of client local ip (private)
+                        addString(resultList, "client_local_ip", test.getField("client_ip_local_type"));
                         
                         // nat-translation of client - csv 23
                         addString(resultList, "nat_type", test.getField("nat_type"));
@@ -394,7 +451,7 @@ public class TestResultDetailResource extends ServerResource
                         	final String testUlIfBytesDownloadString = format.format(testUlIfBytesDownload / (1000d * 1000d));
                         	addString(
                         			resultList,
-                        			"testul_if_bytes_upload",
+                        			"testul_if_bytes_download",
                         			String.format("%s %s", testUlIfBytesDownloadString,
                         					labels.getString("RESULT_TOTAL_BYTES_UNIT")));
                         }
@@ -448,6 +505,7 @@ public class TestResultDetailResource extends ServerResource
                             // labels.getString("RESULT_PING_UNIT")));
                         }
                         
+                        addString(resultList, "server_name", test.getField("server_name"));
                         addString(resultList, "plattform", test.getField("plattform"));
                         addString(resultList, "os_version", test.getField("os_version"));
                         addString(resultList, "model", test.getField("model_fullname"));
@@ -462,10 +520,10 @@ public class TestResultDetailResource extends ServerResource
                                     "encryption",
                                     "NONE".equals(encryption) ? labels
                                             .getString("key_encryption_false") : labels.getString("key_encryption_true"));
-                            addString(resultList, "client_version", test.getField("client_version"));
                         }
                         
-                        addString(resultList, "server_name", server.getName());
+                        addString(resultList, "client_version", test.getField("client_version"));
+                                               
                         addString(
                                 resultList,
                                 "duration",
@@ -537,6 +595,9 @@ public class TestResultDetailResource extends ServerResource
         
         answerString = answer.toString();
         
+        long elapsedTime = System.currentTimeMillis() - startTime;
+        System.out.println(MessageFormat.format(labels.getString("NEW_TESTRESULT_DETAIL_SUCCESS"), clientIpRaw, Long.toString(elapsedTime)));
+        
         return answerString;
     }
     
@@ -554,7 +615,7 @@ public class TestResultDetailResource extends ServerResource
      * @return
      * @throws JSONException
      */
-    public static JSONObject getGeoLocation(Test test, ResourceBundle settings, Connection conn, ResourceBundle labels) throws JSONException {
+    public static JSONObject getGeoLocation(Settings sett, Test test, ResourceBundle settings, Connection conn, ResourceBundle labels) throws JSONException {
     	JSONObject json = new JSONObject(); 
         // geo-location
         final Field latField = test.getField("geo_lat"); //csv 6
@@ -564,7 +625,7 @@ public class TestResultDetailResource extends ServerResource
         if (!(latField.isNull() || longField.isNull() || accuracyField.isNull()))
         {
             final double accuracy = accuracyField.doubleValue();
-            if (accuracy < Double.parseDouble(settings.getString("RMBT_GEO_ACCURACY_DETAIL_LIMIT")))
+            if (accuracy < Double.parseDouble(sett.getSetting("rmbt_geo_accuracy_detail_limit")))
             {
                 final StringBuilder geoString = new StringBuilder(Helperfunctions.geoToString(latField.doubleValue(),
                         longField.doubleValue()));
@@ -596,7 +657,7 @@ public class TestResultDetailResource extends ServerResource
                 try {
                 	OpenTestResource.LocationGraph locGraph = new OpenTestResource.LocationGraph(test.getUid(), clientTime, conn);
                 	if ((locGraph.getTotalDistance() > 0) &&
-                	        locGraph.getTotalDistance() <= Double.parseDouble(settings.getString("RMBT_GEO_DISTANCE_DETAIL_LIMIT"))) {
+                	        locGraph.getTotalDistance() <= Double.parseDouble(sett.getSetting("rmbt_geo_distance_detail_limit"))) {
                 		json.put("motion", Math.round(locGraph.getTotalDistance()) + " m");
                 	}
 

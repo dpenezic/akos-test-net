@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Copyright 2013-2014 alladin-IT GmbH
+  Copyright 2013-2015 alladin-IT GmbH
   
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 -->
 <resources>
     
-    <string name="error_no_internet">No Internet connection\navailalbe</string>   
+    <string name="error_no_internet">No Internet connection\navailable</string>   
     <string name="error_no_data">No data available.</string>
     <string name="error_history_no_data_no_connection">No Internet connection. Could not load data.</string>
     
@@ -59,6 +59,8 @@
     
     <string name="preferences_ndt">NDT</string>
     <string name="preferences_ndt_sum">Activate extended test</string>
+
+    <string name="preferences_ic">Publish personal data</string>
     
     <string name="preferences_ipv4_only">IPv4 only</string>
     <string name="preferences_ipv4_only_sum">Never use IPv6</string>
@@ -67,7 +69,7 @@
     <string name="preferences_category_loop_mode">Loop mode</string>
     <string name="preferences_category_developer_control_server">Control server</string>
     <string name="preferences_category_developer_map_server">Map server</string>
-    <string name="preferences_category_developer_qos_server">QoS server</string>
+    <string name="preferences_category_developer_qos_server">NST server</string>
     <string name="preferences_category_developer_debug">Debugging</string>
     
     <string name="preferences_dev_control_override">Override control server</string>
@@ -94,11 +96,11 @@
     <string name="preferences_dev_map_ssl">Map server SSL</string>
     <string name="preferences_dev_map_ssl_sum">Use encrypted connection to map server</string>
 
-    <string name="preferences_dev_qos_ssl">QoS server SSL</string>
-    <string name="preferences_dev_qos_ssl_sum">Use encrypted connection to QoS server</string>
+    <string name="preferences_dev_qos_ssl" >NST server SSL</string>
+    <string name="preferences_dev_qos_ssl_sum" >Use encrypted connection to NST server</string>
     
-    <string name="preferences_dev_debug_sysout">Store error output in file</string>
-    <string name="preferences_dev_debug_sysout_sum">Stores error output in a text file located in the "qosdebug" folder</string>
+    <string name="preferences_dev_debug_sysout" >Store error output in file</string>
+    <string name="preferences_dev_debug_sysout_sum" >Stores error output in a text file located in the "qosdebug" folder</string>
 
     <string name="menu_button_start">START</string>
     <string name="menu_button_title_page">Home</string>
@@ -108,7 +110,9 @@
     <string name="menu_button_statistics">Statistics</string>
     <string name="menu_button_settings">Settings</string>
     <string name="menu_button_about">Info</string>
+    <string name="menu_button_log">Logging</string>
     <string name="menu_button_share">Share</string>
+	<string name="menu_button_netstat">Netstat</string>
     
     <string name="news_title">News</string>
     <string name="news_no_message">No message text.</string>
@@ -125,9 +129,9 @@
     <string name="about_git_line1" translatable="false">https://github.com/alladin-IT/open-rmbt</string>
     <string name="about_git_link" translatable="false">https://github.com/alladin-IT/open-rmbt</string>
     <string name="about_dev_title">Development</string>
-    <string name="about_dev_line1" translatable="false">alladin-IT GmbH</string>
-    <string name="about_dev_line2" translatable="false">http://www.alladin.at/</string>
-    <string name="about_dev_link" translatable="false">http://www.alladin.at/</string>
+    <string name="about_dev_line1" translatable="false">SPECURE GmbH</string>
+    <string name="about_dev_line2" translatable="false">https://www.specure.com/</string>
+    <string name="about_dev_link" translatable="false">https://www.specure.com/</string>
     <string name="about_gms_legal_title">Google Play</string>
     <string name="about_gms_legal_line1">Google Play Services Legal Notice</string>
     <string name="about_test_counter_title">Test Counter</string>
@@ -138,6 +142,9 @@
     <string name="terms_accept_button_continue">Continue</string>
     <string name="terms_decline_button">Decline</string>
 
+	<string name="terms_ic_header">Publish personal data</string>
+    <string name="terms_ic_accept_text"><b>Publish personal data.</b></string>
+    
     <string name="terms_ndt_header">Optional, more comprehensive NDT-Test</string>
     <string name="terms_ndt_accept_text"><b>I wish to run the optional NDT-Test.</b></string>
     <string name="terms_ndt_back_button">Back</string>
@@ -166,7 +173,7 @@
     <string name="test_dialog_error_title">Error…</string>
     <string name="test_dialog_error_text">There has been an error during the test.</string>
     <string name="test_dialog_error_control_server_conn">Connection to test server cannot be established.</string>
-    <string name="test_toast_error_text_qos">There has been an error during the QoS test.</string>
+    <string name="test_toast_error_text_qos">There has been an error during the NST.</string>
     
     <string name="test_dialog_abort_title">Abort…</string>
     <string name="test_dialog_abort_text">Do you really want to abort the running test?</string>
@@ -229,6 +236,14 @@
 	<string name="map_overlay_points_summary">Map shows tests as points</string>
 	<string name="map_overlay_shapes_title">Shapes</string>
 	<string name="map_overlay_shapes_summary">Map shows tests as postal code shapes</string>
+	<string name="map_overlay_regions_title">Regions</string>
+	<string name="map_overlay_regions_summary"></string>
+	<string name="map_overlay_municipality_title">Municipality</string>
+	<string name="map_overlay_municipality_summary"></string>	
+	<string name="map_overlay_settlements_title">Settlements</string>
+	<string name="map_overlay_settlements_summary"></string>	
+	<string name="map_overlay_whitespots_title">White spots</string>
+	<string name="map_overlay_whitespots_summary"></string>
 	
 	<string name="map_balloon_overlay_header">MEASUREMENTS</string>
 	
@@ -247,6 +262,9 @@
 	<string name="test_bottom_test_status_aborted">Aborted</string>
 	<string name="test_bottom_text_empty" translatable="false">\n\n\n</string>
 	
+	<string name="test_bottom_test_status_ip">IP:</string>
+	<string name="test_bottom_test_status_server">Server:</string>
+	
 	
 	<!-- QoS values: -->
 	
@@ -257,7 +275,7 @@
 	
 	<string name="term_signal">Signal</string>
 	
-	<string name="result_page_title_qos">QoS</string>
+	<string name="result_page_title_qos">NST</string>
 	<string name="result_page_title_test">Details</string>
 	<string name="result_page_title_menu">Result</string>
 	<string name="result_page_title_graph">Graph</string>
@@ -277,13 +295,18 @@
 	<string name="qos_test_name_dns">DNS</string>
 	<string name="qos_test_name_tcp">TCP ports</string>	
 	<string name="qos_test_name_udp">UDP ports</string>
+	<string name="qos_test_name_voip">VoIP</string>
+	<string name="qos_test_name_traceroute">Traceroute</string>
 	
 	<string name="qos_test_result_error">Error</string>
 	<string name="qos_test_result_all">Results</string>
 	
+	<string name="result_graph_download_and_speed">Download (Mbps)</string>
+	<string name="result_graph_upload_and_speed">Upload (Mbps)</string>
+	
 	<string name="result_details_qos_failure">FAILED</string>
 	<string name="result_details_qos_success">SUCCEEDED</string>
-	
+	<string name="result_details_qos_info">ADDITIONAL RESULTS</string>
 	
 	<string name="page_title_title_page">Menu</string>
 	<string name="page_title_history">History</string>
@@ -295,7 +318,8 @@
 	<string name="page_title_about">About</string>
 	<string name="page_title_main_result">Test result</string>
 	<string name="page_title_sync">Sync</string>
-	<string name="page_title_qos_result">QoS results</string>
+	<string name="page_title_qos_result">NST results</string>
+	<string name="page_title_information_commissioner">Information Commissioner</string>
 	
 	<string-array name="navigation_main_titles">
 	    <item>@string/menu_button_title_page</item>
@@ -307,11 +331,17 @@
     	<item>@string/page_title_settings</item>
 	</string-array>
 	
-	<string name="result_qos_stats">Quality tests</string>
-	<string name="result_qos_error_no_data_available">The QoS test was not executed.</string>
+	<string name="result_qos_stats">Network service tests</string>
+	<string name="result_qos_error_no_data_available">The Network service test was not executed.</string>
 	
+	<string name="title_screen_cpu">CPU</string>
+	<string name="title_screen_ram">RAM</string>
+	<string name="title_screen_ip">IP</string>
 	<string name="title_screen_ipv4">IPv4</string>
 	<string name="title_screen_ipv6">IPv6</string>
+	<string name="title_screen_cpu_mem_info">CPU &amp; memory usage</string>
+	<string name="title_screen_traffic_info">Traffic</string>
+	<string name="title_screen_location_info">Location</string>
 	<string name="title_screen_traffic">Background traffic</string>
 	<string name="title_screen_network_id">Network ID:</string>
 	
@@ -331,8 +361,14 @@
 	<string name="title_screen_info_overlay_location_accuracy">Accuracy</string>
 	<string name="title_screen_info_overlay_location_altitude">Altitude</string>
 	<string name="title_screen_info_overlay_location_age">Age</string>
-	<string name="title_screen_empty">-</string>
+	<string name="title_screen_info_overlay_cpu_usage">CPU usage</string>
+	<string name="title_screen_info_overlay_cpu_cores">CPU cores</string>
+	<string name="title_screen_info_overlay_mem_usage">Memory usage</string>
+	<string name="title_screen_info_overlay_mem_total">Total memory</string>
+	<string name="title_screen_info_overlay_mem_free">Free memory</string>
+	<string name="title_screen_empty" translatable="false"></string>
 	
+	<string name="title_screen_bottom_text">Open-RMBT TEST NET</string>
 		
 	<string name="captive_portal_found">found</string>
 	<string name="captive_portal_not_found">not found</string>
@@ -342,5 +378,10 @@
 	
 	<string name="test_label_test_info">Test information</string>
 	<string name="test_label_progress">Progress</string>
-	<string name="test_label_quality_test">Quality test</string>
+	<string name="test_label_quality_test">Network Services Test</string>
+	
+	<string name="netstat_local_address">Local address</string>
+	<string name="netstat_remote_address">Remote address</string>
+	
+	<string name="start_data_consumption_warning">Using Open-RMBT on mobile devices may cause consumption of large data amount. By using it on 3G technology the usual data amount would be between 5 and 10 MB. On 4G data amount may exceed 100 MB.</string>
 </resources>

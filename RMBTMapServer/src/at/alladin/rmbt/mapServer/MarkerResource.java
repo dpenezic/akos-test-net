@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ import at.alladin.rmbt.shared.Helperfunctions;
 import at.alladin.rmbt.shared.ResourceManager;
 import at.alladin.rmbt.shared.SignificantFormat;
 
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Strings;
 
 public class MarkerResource extends ServerResource
@@ -55,6 +55,10 @@ public class MarkerResource extends ServerResource
     public String request(final String entity)
     {
         addAllowOrigin();
+        
+        final MapServerOptions mso = MapServerOptions.getInstance();
+        final Classification classification = Classification.getInstance();
+        
         
         JSONObject request = null;
         
@@ -135,10 +139,10 @@ public class MarkerResource extends ServerResource
                                                                           // default
                             optionStr = "mobile/download";
                         
-                        final MapOption mo = MapServerOptions.getMapOptionMap().get(optionStr);
+                        final MapOption mo = mso.getMapOptionMap().get(optionStr);
                         
-                        final List<SQLFilter> filters = new ArrayList<SQLFilter>(MapServerOptions.getDefaultMapFilters());
-                        filters.add(MapServerOptions.getAccuracyMapFilter());
+                        final List<SQLFilter> filters = new ArrayList<>(mso.getDefaultMapFilters());
+                        filters.add(mso.getAccuracyMapFilter());
                         
                         final JSONObject mapFilterObj = request.getJSONObject("filter");
                         
@@ -152,7 +156,7 @@ public class MarkerResource extends ServerResource
                                     hightlightUUIDString = mapFilterObj.getString(key);
                                 else
                                 {
-                                    final MapFilter mapFilter = MapServerOptions.getMapFilterMap().get(key);
+                                    final MapFilter mapFilter = mso.getMapFilterMap().get(key);
                                     if (mapFilter != null)
                                         filters.add(mapFilter.getFilter(mapFilterObj.getString(key)));
                                 }
@@ -189,7 +193,7 @@ public class MarkerResource extends ServerResource
                                             + " COALESCE(mnwk.shortname,mnwk.name) mobile_network_name,"
                                             + " COALESCE(msim.shortname,msim.name) mobile_sim_name"
                                             + (highlightUUID == null ? "" : " , c.uid, c.uuid")
-                                            + " FROM test t"
+                                            + " FROM v_test t"
                                             + " LEFT JOIN mccmnc2name mnwk ON t.mobile_network_id=mnwk.uid"
                                             + " LEFT JOIN mccmnc2name msim ON t.mobile_sim_id=msim.uid"
                                             + " LEFT JOIN provider prov"
@@ -264,7 +268,7 @@ public class MarkerResource extends ServerResource
                                             format.format(fieldDown / 1000d), labels.getString("RESULT_DOWNLOAD_UNIT"));
                                     singleItem.put("value", downloadString);
                                     singleItem.put("classification",
-                                            Classification.classify(Classification.THRESHOLD_DOWNLOAD, fieldDown));
+                                            Classification.classify(classification.THRESHOLD_DOWNLOAD, fieldDown));
                                     // singleItem.put("help", "www.rtr.at");
                                     
                                     jsonItemList.put(singleItem);
@@ -276,7 +280,7 @@ public class MarkerResource extends ServerResource
                                             labels.getString("RESULT_UPLOAD_UNIT"));
                                     singleItem.put("value", uploadString);
                                     singleItem.put("classification",
-                                            Classification.classify(Classification.THRESHOLD_UPLOAD, fieldUp));
+                                            Classification.classify(classification.THRESHOLD_UPLOAD, fieldUp));
                                     // singleItem.put("help", "www.rtr.at");
                                     
                                     jsonItemList.put(singleItem);
@@ -289,7 +293,7 @@ public class MarkerResource extends ServerResource
                                             labels.getString("RESULT_PING_UNIT"));
                                     singleItem.put("value", pingString);
                                     singleItem.put("classification",
-                                            Classification.classify(Classification.THRESHOLD_PING, fieldPing));
+                                            Classification.classify(classification.THRESHOLD_PING, fieldPing));
                                     // singleItem.put("help", "www.rtr.at");
                                     
                                     jsonItemList.put(singleItem);
@@ -300,8 +304,8 @@ public class MarkerResource extends ServerResource
                                     if (signalField != null && signalField.length() != 0)
                                     {
                                         final int signalValue = rs.getInt("signal_strength");
-                                        final int[] threshold = networkType == 99 || networkType == 0 ? Classification.THRESHOLD_SIGNAL_WIFI
-                                                : Classification.THRESHOLD_SIGNAL_MOBILE;
+                                        final int[] threshold = networkType == 99 || networkType == 0 ? classification.THRESHOLD_SIGNAL_WIFI
+                                                : classification.THRESHOLD_SIGNAL_MOBILE;
                                         singleItem = new JSONObject();
                                         singleItem.put("title", labels.getString("RESULT_SIGNAL"));
                                         singleItem.put("value",
@@ -315,7 +319,7 @@ public class MarkerResource extends ServerResource
                                     if (lteRsrpField != null && lteRsrpField.length() != 0)
                                     {
                                         final int lteRsrpValue = rs.getInt("lte_rsrp");
-                                        final int[] threshold = Classification.THRESHOLD_SIGNAL_RSRP;
+                                        final int[] threshold = classification.THRESHOLD_SIGNAL_RSRP;
                                         singleItem = new JSONObject();
                                         singleItem.put("title", labels.getString("RESULT_LTE_RSRP"));
                                         singleItem.put("value",
@@ -339,7 +343,7 @@ public class MarkerResource extends ServerResource
                                     
                                     if (networkType == 98 || networkType == 99) // mobile wifi or browser
                                     {
-                                        String providerText = Objects.firstNonNull(rs.getString("provider_text"),rs.getString("public_ip_as_name"));
+                                        String providerText = MoreObjects.firstNonNull(rs.getString("provider_text"),rs.getString("public_ip_as_name"));
                                         if (! Strings.isNullOrEmpty(providerText))
                                         {
                                         	if (providerText.length() > (MAX_PROVIDER_LENGTH +3)) {

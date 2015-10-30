@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ public interface Config
     public static final String RMBT_CLIENT_TYPE = "MOBILE";
     public static final String RMBT_CLIENT_NAME = "RMBT";
     public static final String RMBT_SETTINGS_FILENAME = "RMBTClient";
-    public static final String RMBT_DEV_UNLOCK_PACKAGE_NAME = "at.alladin.rmbt.android.devunlock";
+    public static final String RMBT_DEV_UNLOCK_PACKAGE_NAME = "at.alladin.rmbt.akos.devunlock";
     // public static final String RMBT_AGB_FILENAME = "RMBTAgbs";
     
     /*********************

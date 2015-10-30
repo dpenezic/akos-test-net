@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ public class InfoResource extends ServerResource
         String lastType = null;
         JSONArray optionsArray = null;
         
-        final Map<String, MapOption> mapOptionMap = MapServerOptions.getMapOptionMap();
+        final Map<String, MapOption> mapOptionMap = MapServerOptions.getInstance().getMapOptionMap();
         for (final Map.Entry<String, MapOption> entry : mapOptionMap.entrySet())
         {
             final String key = entry.getKey();

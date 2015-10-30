@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,9 @@ package at.alladin.rmbt.android.test;
 import java.text.DecimalFormat;
 import java.text.Format;
 import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 
 import android.app.AlertDialog;
@@ -45,17 +48,26 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.ListAdapter;
+import android.widget.ListView;
+import android.widget.SimpleAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 import at.alladin.openrmbt.android.R;
+import at.alladin.rmbt.android.graphview.CustomizableGraphView;
+import at.alladin.rmbt.android.graphview.GraphService;
+import at.alladin.rmbt.android.graphview.GraphService.GraphData;
+import at.alladin.rmbt.android.graphview.GraphView;
 import at.alladin.rmbt.android.main.RMBTMainActivity;
 import at.alladin.rmbt.android.test.RMBTService.RMBTBinder;
+import at.alladin.rmbt.android.test.SmoothGraph.SmoothingFunction;
 import at.alladin.rmbt.android.util.Helperfunctions;
 import at.alladin.rmbt.android.util.InformationCollector;
 import at.alladin.rmbt.android.util.net.NetworkUtil;
 import at.alladin.rmbt.android.util.net.NetworkUtil.MinMax;
 import at.alladin.rmbt.android.views.GroupCountView;
 import at.alladin.rmbt.android.views.ProgressView;
+import at.alladin.rmbt.android.views.ResultGraphView;
 import at.alladin.rmbt.client.helper.IntermediateResult;
 import at.alladin.rmbt.client.helper.NdtStatus;
 import at.alladin.rmbt.client.helper.TestStatus;
@@ -64,22 +76,35 @@ import at.alladin.rmbt.client.v2.task.QoSTestEnum;
 public class RMBTTestFragment extends Fragment implements ServiceConnection
 {
     private static final String TAG = "RMBTTestFragment";
+
+    /**
+     * used for smoothing the speed graph: amount of data needed for smoothing function
+     */
+    public static final int SMOOTHING_DATA_AMOUNT = 5;
+    
+    /**
+     * smoothing function used for speed graph.
+     * BEWARE: different functions could require different data amounts
+     */
+    public static final SmoothingFunction SMOOTHING_FUNCTION = SmoothingFunction.CENTERED_MOVING_AVARAGE;
     
     private static final long UPDATE_DELAY = 100;
     private static final int SLOW_UPDATE_COUNT = 20;
     
-    private static final int PROGRESS_SEGMENTS_TOTAL = 132;
+    private static final int PROGRESS_SEGMENTS_TOTAL = 266;
+    private static final int PROGRESS_SEGMENTS_PROGRESS_RING = 133;
     private static final int PROGRESS_SEGMENTS_INIT = 16;
     private static final int PROGRESS_SEGMENTS_PING = 17;
-    private static final int PROGRESS_SEGMENTS_DOWN = 33;
-    private static final int PROGRESS_SEGMENTS_UP = 33;
-    private static final int PROGRESS_SEGMENTS_QOS = 33;
+    private static final int PROGRESS_SEGMENTS_DOWN = 50;
+    private static final int PROGRESS_SEGMENTS_UP = 50;
+    private static final int PROGRESS_SEGMENTS_QOS = 133;
     
     private static final long GRAPH_MAX_NSECS = 8000000000L;
     
-    private final Format pingFormat = new DecimalFormat("@@ ms");
     private Format speedFormat;
-    private final Format percentFormat = DecimalFormat.getPercentInstance();
+    private final Format PING_FORMAT = new DecimalFormat("@@ ms");
+    private final Format INIT_FORMAT = new DecimalFormat("@@@@ ms");
+    private final Format PERCENT_FORMAT = new DecimalFormat("00%");
     
     private boolean qosMode = false;
     
@@ -89,12 +114,15 @@ public class RMBTTestFragment extends Fragment implements ServiceConnection
     private GraphView graphView;
     private GraphService speedGraph;
     private GraphService signalGraph;
-    private boolean uploadGraph;
+    private SpeedTestStatViewController speedTestStatViewController;
+	private boolean uploadGraph;
     private boolean graphStarted;
     private TextView textView;
+    private TextView textViewInfoTitle;
     private ViewGroup groupCountContainerView;
     private ViewGroup qosProgressView;
     private ViewGroup infoView;
+    private ListView infoHeaderView;
     
     private IntermediateResult intermediateResult;
     private int lastNetworkType;
@@ -158,8 +186,7 @@ public class RMBTTestFragment extends Fragment implements ServiceConnection
         waitText = getResources().getString(R.string.test_progress_text_wait);
         
         speedFormat = new DecimalFormat(String.format("@@ %s",
-                getActivity().getResources().getString(R.string.test_mbps)));
-                
+                getActivity().getResources().getString(R.string.test_mbps)));        
     }
     
     protected RMBTMainActivity getMainActivity()
@@ -222,7 +249,7 @@ public class RMBTTestFragment extends Fragment implements ServiceConnection
     {
         final View view = inflater.inflate(R.layout.test, container, false);
         
-        return createView(view, inflater);
+        return createView(view, inflater, savedInstanceState);
     }
     
     /**
@@ -231,20 +258,42 @@ public class RMBTTestFragment extends Fragment implements ServiceConnection
      * @param inflater
      * @return
      */
-    private View createView(View view, LayoutInflater inflater) {
+    private View createView(final View view, final LayoutInflater inflater, final Bundle savedInstanceState) {
         testView = (TestView) view.findViewById(R.id.test_view);
         graphView = (GraphView) view.findViewById(R.id.test_graph);
         infoView = (ViewGroup) view.findViewById(R.id.test_view_info_container);
         textView = (TextView) view.findViewById(R.id.test_text);
+        textViewInfoTitle = (TextView) view.findViewById(R.id.test_info_title);
         qosProgressView = (ViewGroup) view.findViewById(R.id.test_view_qos_container);
         groupCountContainerView = (ViewGroup) view.findViewById(R.id.test_view_group_count_container);
         
         if (graphView != null)
         {
-            speedGraph = Graph.addGraph(graphView, Color.parseColor("#00f940"), GRAPH_MAX_NSECS);
-            signalGraph = Graph.addGraph(graphView, Color.parseColor("#f8a000"), GRAPH_MAX_NSECS);
+        	if (savedInstanceState == null || savedInstanceState.getBoolean(OPTION_ON_CREATE_VIEW_CREATE_SPEED_GRAPH, true)) {
+        		speedGraph = SimpleGraph.addGraph(graphView, Color.parseColor("#00f940"), GRAPH_MAX_NSECS);  //SmoothGraph.addGraph(graphView, Color.parseColor("#00f940"), SMOOTHING_DATA_AMOUNT, SMOOTHING_FUNCTION, false);
+        		speedGraph.setMaxTime(GRAPH_MAX_NSECS);
+        	}
+        	
+        	if (savedInstanceState == null || savedInstanceState.getBoolean(OPTION_ON_CREATE_VIEW_CREATE_SIGNAL_GRAPH, true)) {
+        		signalGraph = SimpleGraph.addGraph(graphView, Color.parseColor("#f8a000"), GRAPH_MAX_NSECS);
+        	}
+        	
+        	//graphView.getLabelInfoVerticalList().add(new GraphLabel(getActivity().getString(R.string.test_dbm), "#f8a000"));
+        	graphView.setRowLinesLabelList(ResultGraphView.SPEED_LABELS);
+        	if (graphView instanceof CustomizableGraphView) {
+        		((CustomizableGraphView) graphView).setShowLog10Lines(false);
+        	}
         }
-        uploadGraph = false;
+        //uploadGraph = false;
+        graphStarted = false;
+
+        speedTestStatViewController = new SpeedTestStatViewController(getMainActivity());
+        final ListView speedTestViewListView = (ListView) view.findViewById(R.id.test_view_info_listview);
+        speedTestViewListView.setAdapter(speedTestStatViewController.getListAdaper());
+
+        infoHeaderView = (ListView) view.findViewById(R.id.test_view_info_server_list);
+        infoHeaderView.setAdapter(generateInfoListAdapter());
+        
         graphStarted = false;
         
         textView.setText("\n\n\n");
@@ -329,13 +378,14 @@ public class RMBTTestFragment extends Fragment implements ServiceConnection
             if (getActivity() == null)
                 return;
             
-            if (qosMode)
+            if (qosMode) {
                 updateQoSUI();
-            else
+            }
+            else {
                 updateUI();
+            }
             
             if (rmbtService != null) {
-//            	System.out.println(rmbtService.isCompleted() + " - " + rmbtService.isConnectionError());
                 if (rmbtService.isCompleted() && rmbtService.getTestUuid() != null) {
                    	handler.postDelayed(resultSwitcherRunnable, 300);
                 }
@@ -357,7 +407,8 @@ public class RMBTTestFragment extends Fragment implements ServiceConnection
         }
     };
     
-    private void updateUI()
+    @SuppressWarnings("unchecked")
+	private void updateUI()
     {
         String teststatus;
         updateCounter++;
@@ -443,6 +494,9 @@ public class RMBTTestFragment extends Fragment implements ServiceConnection
                 lastOperatorName = operatorName;
             testView.setHeaderString(lastOperatorName);
             testView.setSubHeaderString(lastNetworkTypeString);
+            
+            textViewInfoTitle.setText(lastOperatorName + " " + lastNetworkTypeString);
+            
             final String serverName = rmbtService.getServerName();
             if (serverName != null)
                 lastServerName = serverName;
@@ -474,8 +528,19 @@ public class RMBTTestFragment extends Fragment implements ServiceConnection
             
             teststatus = lastStatusString;
             
-            textView.setText(MessageFormat.format(bottomText, teststatus, lastServerName, lastIP, 
-                    locationStr_line1, locationStr_line2));
+            if (textView.getVisibility() == View.VISIBLE) {
+                textView.setText(MessageFormat.format(bottomText, teststatus, lastServerName, lastIP, 
+                        locationStr_line1, locationStr_line2));	
+            }
+            else {
+				HashMap<String, String> e = (HashMap<String, String>) infoHeaderView.getAdapter().getItem(SpeedTestInfoList.IP.ordinal());
+            	e.put("value", lastIP);
+            	
+            	e = (HashMap<String, String>) infoHeaderView.getAdapter().getItem(SpeedTestInfoList.SERVER.ordinal());
+            	e.put("value", lastServerName);
+            	
+            	((SimpleAdapter) infoHeaderView.getAdapter()).notifyDataSetChanged();
+            }
         }
         
         Integer signal = rmbtService.getSignal();
@@ -501,16 +566,16 @@ public class RMBTTestFragment extends Fragment implements ServiceConnection
         }
         
         Double relativeSignal = null;
-        MinMax<Integer> signalBoungs = NetworkUtil.getSignalStrengthBounds(signalType);
-        if (! (signalBoungs.min == Integer.MIN_VALUE || signalBoungs.max == Integer.MAX_VALUE))
-            relativeSignal = (double)(signal - signalBoungs.min) / (double)(signalBoungs.max - signalBoungs.min);
+        MinMax<Integer> signalBounds = NetworkUtil.getSignalStrengthBounds(signalType);
+        if (! (signalBounds.min == Integer.MIN_VALUE || signalBounds.max == Integer.MAX_VALUE))
+            relativeSignal = (double)(signal - signalBounds.min) / (double)(signalBounds.max - signalBounds.min);
         
         if (signalTypeChanged && graphView != null)
         {
             if (signalGraph != null)
                 signalGraph.clearGraphDontResetTime();
             if (relativeSignal != null)
-                graphView.setSignalRange(signalBoungs.min, signalBoungs.max);
+                graphView.setSignalRange(signalBounds.min, signalBounds.max);
             else
                 graphView.removeSignalRange();
             graphView.invalidate();
@@ -548,7 +613,7 @@ public class RMBTTestFragment extends Fragment implements ServiceConnection
                 if (graphStarted || speedValueRelative != 0)
                 {
                     graphStarted = true;
-                    speedGraph.addValue(speedValueRelative);
+                    speedGraph.addValue(speedValueRelative, SmoothGraph.FLAG_USE_CURRENT_NODE_TIME);
                     if (relativeSignal != null)
                         signalGraph.addValue(relativeSignal);
                     graphView.invalidate();
@@ -576,7 +641,7 @@ public class RMBTTestFragment extends Fragment implements ServiceConnection
                 if (graphStarted || speedValueRelative != 0)
                 {
                     graphStarted = true;
-                    speedGraph.addValue(speedValueRelative);
+                    speedGraph.addValue(speedValueRelative, SmoothGraph.FLAG_USE_CURRENT_NODE_TIME);
                     if (relativeSignal != null)
                         signalGraph.addValue(relativeSignal);
                     graphView.invalidate();
@@ -589,7 +654,8 @@ public class RMBTTestFragment extends Fragment implements ServiceConnection
             progressSegments = PROGRESS_SEGMENTS_INIT + PROGRESS_SEGMENTS_PING + PROGRESS_SEGMENTS_DOWN
                     + PROGRESS_SEGMENTS_UP;
             speedValueRelative = intermediateResult.upBitPerSecLog;
-            
+            testView.setSpeedValue(0d);
+            testView.setSpeedString("NST");
             qosMode = true;
         	
             break;
@@ -605,37 +671,71 @@ public class RMBTTestFragment extends Fragment implements ServiceConnection
                     showErrorDialog(R.string.test_dialog_error_text);
                 return;
             }
+            
+        default:
+        	break;
         }
+
         testView.setSpeedValue(speedValueRelative);
-        
         testView.setSignalType(signalType);
         if (signal != null)
             testView.setSignalString(String.valueOf(signal));
         if (relativeSignal != null)
             testView.setSignalValue(relativeSignal);
         
-        final double progressValue = (double) progressSegments / PROGRESS_SEGMENTS_TOTAL;
-        testView.setProgressValue(progressValue);
-        testView.setProgressString(percentFormat.format(progressValue));
+        final double progressValue = (double) progressSegments / PROGRESS_SEGMENTS_PROGRESS_RING;
+        final double correctProgressValue = testView.setProgressValue(progressValue);
+        final double totalProgressValue = (double) (correctProgressValue * PROGRESS_SEGMENTS_PROGRESS_RING) / (double)PROGRESS_SEGMENTS_TOTAL;
+        testView.setProgressString(PERCENT_FORMAT.format(totalProgressValue));
+        
+        final String initStr;
+        if (intermediateResult.initNano < 0)
+            initStr = "-";
+        else
+            initStr = INIT_FORMAT.format(intermediateResult.initNano / 1000000.0);
+        
+        if (getSpeedTestStatus() != null) {
+        	getSpeedTestStatus().setResultInitString(initStr,
+        			intermediateResult.status.equals(TestStatus.INIT) ?
+        			SpeedTestStatViewController.FLAG_SHOW_PROGRESSBAR : SpeedTestStatViewController.FLAG_HIDE_PROGRESSBAR);	
+        }
         
         final String pingStr;
         if (intermediateResult.pingNano < 0)
-            pingStr = "–";
+            pingStr = "-";
         else
-            pingStr = pingFormat.format(intermediateResult.pingNano / 1000000.0);
-        testView.setResultPingString(pingStr);
+            pingStr = PING_FORMAT.format(intermediateResult.pingNano / 1000000.0);
+        
+        if (getSpeedTestStatus() != null) {
+        	getSpeedTestStatus().setResultPingString(pingStr,
+        			intermediateResult.status.equals(TestStatus.PING) ?
+        			SpeedTestStatViewController.FLAG_SHOW_PROGRESSBAR : SpeedTestStatViewController.FLAG_HIDE_PROGRESSBAR);	
+        }
+        
         final String downStr;
         if (intermediateResult.downBitPerSec < 0)
-            downStr = "–";
+            downStr = "-";
         else
             downStr = speedFormat.format(intermediateResult.downBitPerSec / 1000000.0);
-        testView.setResultDownString(downStr);
+
+        if (getSpeedTestStatus() != null) {
+        	getSpeedTestStatus().setResultDownString(downStr, 
+        			intermediateResult.status.equals(TestStatus.DOWN) ? 
+        					SpeedTestStatViewController.FLAG_SHOW_PROGRESSBAR : SpeedTestStatViewController.FLAG_HIDE_PROGRESSBAR);		
+        }
+        
         final String upStr;
         if (intermediateResult.upBitPerSec < 0)
-            upStr = "–";
+            upStr = "-";
         else
             upStr = speedFormat.format(intermediateResult.upBitPerSec / 1000000.0);
-        testView.setResultUpString(upStr);
+        
+        if (getSpeedTestStatus() != null) {
+        	getSpeedTestStatus().setResultUpString(upStr, 
+        			intermediateResult.status.equals(TestStatus.UP) || intermediateResult.status.equals(TestStatus.INIT_UP) ? 
+        					SpeedTestStatViewController.FLAG_SHOW_PROGRESSBAR : SpeedTestStatViewController.FLAG_HIDE_PROGRESSBAR);	
+        }
+
         
         testView.setTestStatus(intermediateResult.status);
         
@@ -801,6 +901,9 @@ public class RMBTTestFragment extends Fragment implements ServiceConnection
             case STOP:
                 progress = 1f;
                 break;
+                
+            default:
+                break;
             }
             
             double progressSegments = 0;
@@ -813,34 +916,27 @@ public class RMBTTestFragment extends Fragment implements ServiceConnection
             switch (status)
             {
             case START:
-                progressSegments = PROGRESS_SEGMENTS_INIT + PROGRESS_SEGMENTS_PING + PROGRESS_SEGMENTS_DOWN +
-                	PROGRESS_SEGMENTS_UP + Math.round(PROGRESS_SEGMENTS_QOS * (progress / rmbtService.getQoSTestSize()));
+                progressSegments = Math.round(PROGRESS_SEGMENTS_QOS * progress / rmbtService.getQoSTestSize());
                 break;
             
             case QOS_RUNNING:
-                progressSegments = PROGRESS_SEGMENTS_INIT + PROGRESS_SEGMENTS_PING + PROGRESS_SEGMENTS_DOWN +
-            		PROGRESS_SEGMENTS_UP + Math.round(PROGRESS_SEGMENTS_QOS * (float)(progress / rmbtService.getQoSTestSize()));
+                progressSegments = Math.round(PROGRESS_SEGMENTS_QOS * (float)(progress / rmbtService.getQoSTestSize()));
                 break;
 
             case QOS_FINISHED:
-            	progressSegments = PROGRESS_SEGMENTS_TOTAL - 1;
-            	break;
-            
             case NDT_RUNNING:
-            	progressSegments = PROGRESS_SEGMENTS_TOTAL - 1;
+            	progressSegments = PROGRESS_SEGMENTS_QOS - 1;
+            	progressSegments = PROGRESS_SEGMENTS_QOS - 1;
             	break;
             	
             case STOP:
-                progressSegments = PROGRESS_SEGMENTS_INIT + PROGRESS_SEGMENTS_PING + PROGRESS_SEGMENTS_DOWN +
-            		PROGRESS_SEGMENTS_UP + PROGRESS_SEGMENTS_QOS;
+                progressSegments = PROGRESS_SEGMENTS_QOS;
                 break;
             
             case ERROR:
             default:
                 break;
             }	    
-
-            final double progressValue = (double) progressSegments / PROGRESS_SEGMENTS_TOTAL;
             
             Integer signal = rmbtService.getSignal();
             int signalType = rmbtService.getSignalType();
@@ -873,8 +969,11 @@ public class RMBTTestFragment extends Fragment implements ServiceConnection
             if (relativeSignal != null)
                 testView.setSignalValue(relativeSignal);
             
-            testView.setProgressValue(progressValue);
-            testView.setProgressString(percentFormat.format(progressValue));
+            final double progressValue = (double) progressSegments / PROGRESS_SEGMENTS_QOS;
+            testView.setSpeedValue(progressValue);
+            
+            final double totalProgressValue = (double) ((double)(PROGRESS_SEGMENTS_PROGRESS_RING + progressSegments) / (double)PROGRESS_SEGMENTS_TOTAL);
+            testView.setProgressString(PERCENT_FORMAT.format(totalProgressValue));
             testView.invalidate();
             
             if (status == QoSTestEnum.QOS_RUNNING && extendedResultButtonCancel != null && extendedResultButtonCancel.getVisibility() == View.GONE)
@@ -927,12 +1026,15 @@ public class RMBTTestFragment extends Fragment implements ServiceConnection
     	populateViewForOrientation(inflater, (ViewGroup) getView());
     }
 
+    private final String OPTION_ON_CREATE_VIEW_CREATE_SPEED_GRAPH = "create_speed_graph";
+    private final String OPTION_ON_CREATE_VIEW_CREATE_SIGNAL_GRAPH = "create_signal_graph";
+    
     /**
      * 
      * @param inflater
      * @param view
      */
-	private void populateViewForOrientation(LayoutInflater inflater, ViewGroup view) {
+	private void populateViewForOrientation(final LayoutInflater inflater, final ViewGroup view) {
 		
 		GroupCountView groupCountView = null;
 		if (groupCountContainerView != null && groupCountContainerView.getChildAt(0) != null) {
@@ -948,10 +1050,43 @@ public class RMBTTestFragment extends Fragment implements ServiceConnection
 		final String resultDown = testView.getResultDownString();
 		final String resultUp = testView.getResultUpString();
 		
+		final GraphData signalGraphData;
+		final GraphData speedGraphData;
+		
+		final MinMax<Integer> currentSignalBounds;
+		final List<GraphView.GraphLabel> graphLabelList;
+		
+		if (graphView != null) {
+			graphLabelList = graphView.getLabelInfoVerticalList();
+			currentSignalBounds = graphView.getSignalRange();
+		}
+		else {
+			graphLabelList = null;
+			currentSignalBounds = null;
+		}
+		
+		if (signalGraph != null) {
+			signalGraphData = signalGraph.getGraphData();
+		}
+		else {
+			signalGraphData = null;
+		}
+		
+		if (speedGraph != null) {
+			speedGraphData = speedGraph.getGraphData();
+		}
+		else {
+			speedGraphData = null;
+		}
+		
 		view.removeAllViewsInLayout();
-        View v = inflater.inflate(R.layout.test, view);
-        createView(v, inflater);
+        final View v = inflater.inflate(R.layout.test, view);
+
+        final Bundle options = new Bundle();
+        options.putBoolean(OPTION_ON_CREATE_VIEW_CREATE_SIGNAL_GRAPH, false);
+        options.putBoolean(OPTION_ON_CREATE_VIEW_CREATE_SPEED_GRAPH, false);
         
+        createView(v, inflater, options);
         
         if (groupCountContainerView != null && groupCountView != null && qosProgressView != null) {
             groupCountContainerView.addView(groupCountView);
@@ -977,5 +1112,62 @@ public class RMBTTestFragment extends Fragment implements ServiceConnection
         if (textView != null) {
         	textView.setText(infoText);
         }
+        
+        if (graphView != null) {
+        	graphView.setRowLinesLabelList(ResultGraphView.SPEED_LABELS);
+        	
+        	if (signalGraphData != null) {
+        		signalGraph = SimpleGraph.addGraph(graphView, GRAPH_MAX_NSECS, signalGraphData);
+        		
+        		if (currentSignalBounds != null) {
+       				graphView.setLabelInfoVerticalList(graphLabelList);
+        			graphView.setSignalRange(currentSignalBounds.min, currentSignalBounds.max);
+        		}
+        	}
+        	if (speedGraphData != null) {
+        		speedGraph = SimpleGraph.addGraph(graphView, GRAPH_MAX_NSECS, speedGraphData); //SmoothGraph.addGraph(graphView, SMOOTHING_DATA_AMOUNT, SMOOTHING_FUNCTION, false, speedGraphData);
+        		speedGraph.setMaxTime(GRAPH_MAX_NSECS);
+        	}
+        }
 	}
+	
+	public ChangeableSpeedTestStatus getSpeedTestStatus() {
+		return speedTestStatViewController;
+	}
+	
+	
+	public enum SpeedTestInfoList {
+		IP(R.string.test_bottom_test_status_ip),
+		SERVER(R.string.test_bottom_test_status_server);
+		
+		final protected int resId;
+		
+		private SpeedTestInfoList(final int resId) {
+			this.resId = resId;
+		}
+		
+		public int getResId() {
+			return resId;
+		}
+	}
+	
+	/**
+	 * generates a list adapter for the info list during the speed test
+	 * @return
+	 */
+	public ListAdapter generateInfoListAdapter() {	
+		final List<HashMap<String, String>> itemList = new ArrayList<HashMap<String,String>>();
+		for (SpeedTestInfoList e : SpeedTestInfoList.values()) {
+				final HashMap<String, String> listItem = new HashMap<String, String>();
+				listItem.put("title", getActivity().getString(e.getResId()));
+				listItem.put("value", "-");
+				itemList.add(listItem);
+		}
+		
+        final SimpleAdapter valueList = new SimpleAdapter(getMainActivity(), itemList, R.layout.test_view_info_server_list_element, 
+        		new String[] {"title", "value"}, 
+        		new int[] {R.id.test_view_info_list_title, R.id.test_view_info_list_result});
+
+        return valueList;
+	}	
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +36,8 @@ public class ResultDesc implements Comparable<ResultDesc> {
 	public final static String STATUS_CODE_FAILURE = "fail";
 	
 	public final static String STATUS_CODE_SUCCESS = "ok";
+	
+	public final static String STATUS_CODE_INFO = "info";
 	
 	/**
 	 * 
@@ -167,21 +169,28 @@ public class ResultDesc implements Comparable<ResultDesc> {
 	@Override
 	public int compareTo(ResultDesc o) {
 		//System.out.println("comparing " + this.getValue() + " : " + o.getValue());
-		if (getValue() != null && o.getValue() != null) {
+		if (getValue() != null && o.getValue() != null && getStatusCode() != null && o.getStatusCode() != null) {
 			//System.out.println("comparing with result: >>> " + this.getParsedValue() + " : " + o.getParsedValue());
-			int i = this.getParsedValue().compareTo(o.getParsedValue());
-			return i;
+			final int s = this.getStatusCode().compareTo(o.getStatusCode());
+			final int i = this.getParsedValue().compareTo(o.getParsedValue());
+			
+			if (s==0 && i==0) {
+				return 0;
+			}
+			
+			return i==0 ? s : i;
 		}
 		else {
-			if (this.getKey() == null || o.getKey() == null) {
+			if (this.getKey() == null || o.getKey() == null || getStatusCode() == null || o.getStatusCode() == null) {
 				return 1;
 			}
 			else {
-				int i = this.getKey().compareTo(o.getKey());
-				if (i == 0) {
-					i = (this.getResultObject().equals(o.getResultObject()) ? 0 : 1);
+				final int i = this.getKey().compareTo(o.getKey());
+				final int s = this.getStatusCode().compareTo(o.getStatusCode());
+				if (i == 0 && s == 0) {
+					return (this.getResultObject().equals(o.getResultObject()) ? 0 : 1);
 				}
-				return i;							
+				return i==0 ? s : i;							
 			}
 		}
 	}
@@ -194,6 +203,7 @@ public class ResultDesc implements Comparable<ResultDesc> {
 	public JSONObject toJson() throws JSONException {
 		JSONObject json = new JSONObject();
 		json.put("status", getStatusCode());
+		json.put("key", getKey());
 		json.put("desc", getParsedValue());
 		json.put("test", getTestType());
 		json.put("uid", testResultUidList);		

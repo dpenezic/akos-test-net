@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Copyright 2013-2014 alladin-IT GmbH
+  Copyright 2013-2015 alladin-IT GmbH
   
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
     </item>
     -->
     <item >
-      <bitmap android:src="@drawable/main_header_text_raw"
+      <bitmap android:src="@drawable/akos_logo"
         android:gravity="center"
          />
     </item>

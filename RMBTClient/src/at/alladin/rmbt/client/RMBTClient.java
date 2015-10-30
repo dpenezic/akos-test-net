@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,10 @@ import java.security.cert.X509Certificate;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutionException;
@@ -32,6 +34,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -51,6 +54,7 @@ import at.alladin.rmbt.client.v2.task.TaskDesc;
 import at.alladin.rmbt.client.v2.task.result.QoSResultCollector;
 import at.alladin.rmbt.client.v2.task.service.TestMeasurement;
 import at.alladin.rmbt.client.v2.task.service.TrafficService;
+import at.alladin.rmbt.util.tools.InformationCollectorTool;
 
 public class RMBTClient
 {
@@ -59,13 +63,18 @@ public class RMBTClient
     private final RMBTTestParameter params;
     
     private final long durationInitNano = 2500000000L; // TODO
-    private final long durationPingNano = 500000000L; // TODO
     private final long durationUpNano;
     private final long durationDownNano;
     
+    private final AtomicLong initNano = new AtomicLong(-1);
     private final AtomicLong pingNano = new AtomicLong(-1);
     private final AtomicLong downBitPerSec = new AtomicLong(-1);
     private final AtomicLong upBitPerSec = new AtomicLong(-1);
+    
+    /* ping status */
+    private final AtomicLong pingTsStart = new AtomicLong(-1);
+    private final AtomicInteger pingNumDome = new AtomicInteger(-1);
+    private final AtomicLong pingTsLastPing = new AtomicLong(-1);
     
     private final static long MIN_DIFF_TIME = 100000000; // 100 ms
     
@@ -99,9 +108,11 @@ public class RMBTClient
     public final static String TASK_UDP = "udp";
     public final static String TASK_TCP = "tcp";
     public final static String TASK_DNS = "dns";
+    public final static String TASK_VOIP = "voip";
     public final static String TASK_NON_TRANSPARENT_PROXY = "non_transparent_proxy";
     public final static String TASK_HTTP = "http_proxy";
     public final static String TASK_WEBSITE = "website";
+    public final static String TASK_TRACEROUTE = "traceroute";
     
     private List<TaskDesc> taskDescList;
 
@@ -112,6 +123,8 @@ public class RMBTClient
     private final AtomicLong statusChangeTime = new AtomicLong();
     
     private TrafficService trafficService;
+    
+    private InformationCollectorTool informationCollectorTool;
     
     public static ExecutorService getCommonThreadPool()
     {
@@ -192,6 +205,34 @@ public class RMBTClient
     
     public TrafficService getTrafficService() {
     	return this.trafficService;
+    }
+    
+    public void setInformationCollectorTool(InformationCollectorTool tool) {
+    	this.informationCollectorTool = tool;
+    }
+    
+    public InformationCollectorTool getInformationCollectorTool() {
+    	return this.informationCollectorTool;
+    }
+    
+    public void startInformationCollectorTool() {
+    	if (this.informationCollectorTool != null && !this.informationCollectorTool.isRunning()) {
+    		this.informationCollectorTool.start(COMMON_THREAD_POOL);
+    	}
+    }
+    
+    public JSONObject getInformationCollectorToolIntermediateResult(boolean clean) {
+    	if (this.informationCollectorTool != null && !this.informationCollectorTool.isRunning()) {
+    		return this.informationCollectorTool.getJsonObject(clean);
+    	}
+    	
+    	return null;
+    }
+    
+    public void stopInformationCollectorTool() {
+    	if (this.informationCollectorTool != null && this.informationCollectorTool.isRunning()) {
+    		this.informationCollectorTool.stop();
+    	}    	
     }
     
     private SSLSocketFactory createSSLSocketFactory()
@@ -358,6 +399,7 @@ public class RMBTClient
             downBitPerSec.set(-1);
             upBitPerSec.set(-1);
             pingNano.set(-1);
+            initNano.set(-1);
             
             final long waitTime = params.getStartTime() - System.currentTimeMillis();
             if (waitTime > 0)
@@ -549,9 +591,11 @@ public class RMBTClient
     
     public void shutdown()
     {
-        System.out.println("Shutting down RMBT thread pool.");
+        System.out.println("Shutting down RMBT thread pool...");
         if (testThreadPool != null)
             testThreadPool.shutdownNow();
+        
+        System.out.println("Shutdown finished.");
     }
     
     @Override
@@ -597,6 +641,8 @@ public class RMBTClient
         return maxTime == 0f ? 0f : (float) sumTrans / (float) maxTime * 1e9f * 8.0f;
     }
     
+    final Map<Integer, List<SpeedItem>> speedMap = new HashMap<Integer, List<SpeedItem>>();
+    
     private float getAvgSpeed()
     {
         long sumDiffTrans = 0;
@@ -619,6 +665,16 @@ public class RMBTClient
                 lastTime[i][currentIndex] = currentSpeed.time;
                 lastTransfer[i][currentIndex] = currentSpeed.trans;
                 
+//                System.out.println("T" + i + ": " + currentSpeed);
+                
+                List<SpeedItem> speedList = speedMap.get(i);
+                if (speedList == null) {
+                	speedList = new ArrayList<SpeedItem>();
+                	speedMap.put(i, speedList);
+                }
+                
+                speedList.add(new SpeedItem(false, i, currentSpeed.time, currentSpeed.trans));
+                
                 final long diffTime = currentSpeed.time - lastTime[i][diffReferenceIndex];
                 final long diffTrans = currentSpeed.trans - lastTransfer[i][diffReferenceIndex];
                 
@@ -626,7 +682,17 @@ public class RMBTClient
                     maxDiffTime = diffTime;
                 sumDiffTrans += diffTrans;
             }
-        return maxDiffTime == 0f ? 0f : (float) sumDiffTrans / (float) maxDiffTime * 1e9f * 8.0f;
+                
+        //TotalTestResult totalResult = TotalTestResult.calculateAndGet(lastTransfer, lastTime, false);
+        //TotalTestResult totalResult = TotalTestResult.calculateAndGet(speedMap);
+        
+        final float speedAvg = maxDiffTime == 0f ? 0f : (float) sumDiffTrans / (float) maxDiffTime * 1e9f * 8.0f;
+        //final float speedAvg = (float)totalResult.speed_download * 1e3f;
+        
+//        System.out.println("calculate: bytes=" + totalResult.bytes_download + " speed=" + (totalResult.speed_download * 1e3) 
+//        		+ " nsec=" + totalResult.nsec_download + ", simple: diff=" + sumDiffTrans + " avg=" + speedAvg);
+        
+        return speedAvg;
     }
     
     public IntermediateResult getIntermediateResult(IntermediateResult iResult)
@@ -648,7 +714,7 @@ public class RMBTClient
             break;
         
         case PING:
-            iResult.progress = (float) diffTime / durationPingNano;
+            iResult.progress = getPingProgress();
             break;
         
         case DOWN:
@@ -673,11 +739,14 @@ public class RMBTClient
         case ABORTED:
             iResult.progress = 0;
             break;
+        default:
+        	break;
         }
         
         if (iResult.progress > 1)
             iResult.progress = 1;
         
+        iResult.initNano = initNano.get();
         iResult.pingNano = pingNano.get();
         iResult.downBitPerSec = downBitPerSec.get();
         iResult.upBitPerSec = upBitPerSec.get();
@@ -780,9 +849,65 @@ public class RMBTClient
             outputCallback.log(String.format(Locale.US, "Error: %s", e.getMessage()));
     }
     
+    void setInitTime(final long initDuration) {
+    	initNano.set(initDuration);
+    }
+    
+    long getInitTime() {
+    	return initNano.get();
+    }
+    
     void setPing(final long shortestPing)
     {
         pingNano.set(shortestPing);
+    }
+    
+    void updatePingStatus(final long tsStart, int pingsDone, long tsLastPing)
+    {
+        pingTsStart.set(tsStart);
+        pingNumDome.set(pingsDone);
+        pingTsLastPing.set(tsLastPing);
+    }
+    
+    private float getPingProgress()
+    {
+        final long start = pingTsStart.get();
+        
+        if (start == -1) // not yet started
+            return 0;
+        
+        final int numDone = pingNumDome.get();
+        final long lastPing = pingTsLastPing.get();
+        final long now = System.nanoTime();
+        
+        final int numPings = params.getNumPings();
+        
+        if (numPings <= 0) // nothing to do
+            return 1;
+        
+        final float factorPerPing = (float)1 / (float)numPings;
+        final float base = factorPerPing * numDone;
+        
+        final long approxTimePerPing;
+        if (numDone == 0 || lastPing == -1) // during first ping, assume 100ms
+            approxTimePerPing = 100000000;
+        else
+            approxTimePerPing = (lastPing - start) / numDone;
+        
+        float factorLastPing = (float)(now - lastPing) / (float)approxTimePerPing;
+        if (factorLastPing < 0)
+            factorLastPing = 0;
+        if (factorLastPing > 1)
+            factorLastPing = 1;
+        
+        final float result = base + factorLastPing * factorPerPing;
+        if (result < 0)
+            return 0;
+        if (result > 1)
+            return 1;
+        
+//        System.out.println("atpp: " + approxTimePerPing + "; flp:" + factorLastPing+ "; res:" +result);
+        return result;
     }
     
     public String getPublicIP()

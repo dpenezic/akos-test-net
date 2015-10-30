@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import android.app.AlertDialog;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
+import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
@@ -33,7 +34,6 @@ import android.content.pm.PackageInfo;
 import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Bundle;
-import android.text.ClipboardManager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -199,8 +199,9 @@ public class RMBTAboutFragment extends Fragment
                 {
                 
                 case 2:
-                    final ClipboardManager clipboard = (ClipboardManager) getActivity().getSystemService(Context.CLIPBOARD_SERVICE);
-                    clipboard.setText(clientUUID);
+                	final android.content.ClipboardManager clipBoard = (android.content.ClipboardManager) getActivity().getSystemService(Context.CLIPBOARD_SERVICE);
+                	ClipData clip = ClipData.newPlainText("client_uuid", clientUUID);
+                	clipBoard.setPrimaryClip(clip);                    
                     final Toast toast = Toast.makeText(getActivity(), R.string.about_clientid_toast, Toast.LENGTH_LONG);
                     toast.show();
                     break;

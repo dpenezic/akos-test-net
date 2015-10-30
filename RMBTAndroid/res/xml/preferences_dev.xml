@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Copyright 2013-2014 alladin-IT GmbH
+  Copyright 2013-2015 alladin-IT GmbH
   
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -218,7 +218,7 @@
                 android:key="dev_debug_output"
                 android:title="@string/preferences_dev_debug_sysout"
                 android:summary="@string/preferences_dev_debug_sysout_sum"
-                android:defaultValue="false"
+                android:defaultValue="true"
                 android:layout="@layout/preferences_item"
                 />
 		    

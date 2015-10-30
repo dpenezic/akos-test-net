@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -147,10 +147,12 @@ public class RMBTClientRunner
             numThreads = (Integer) options.valueOf("t");
         if (options.has("d"))
             duration = (Integer) options.valueOf("d");
-            
+        
+        int numPings = 10;
+        
         RMBTTestParameter overrideParams = null;
         if (numThreads > 0 || duration > 0)
-            overrideParams = new RMBTTestParameter(null, 0, false, duration, numThreads);
+            overrideParams = new RMBTTestParameter(null, 0, false, duration, numThreads, numPings);
             
         client = RMBTClient.getInstance(host, null, port, encryption, geoInfo, uuid,
                 "DESKTOP", Config.RMBT_CLIENT_NAME, Config.RMBT_VERSION_NUMBER, overrideParams, null);

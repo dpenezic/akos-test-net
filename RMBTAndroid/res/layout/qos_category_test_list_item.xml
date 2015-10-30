@@ -37,11 +37,22 @@
             android:padding="2dp" />
 
         <ImageView
+        	android:id="@+id/info_sub_view"
+        	android:layout_width="wrap_content" 
+        	android:layout_height="wrap_content"
+        	android:src="@android:drawable/ic_menu_info_details"
+        	android:layout_centerVertical="true"
+        	android:layout_alignParentRight="true"
+        	android:layout_marginRight="8dp"
+        	android:visibility="invisible" />
+        
+        
+        <ImageView
             android:id="@+id/status"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginRight="25dp"
-            android:layout_alignParentRight="true"
+            android:layout_marginRight="8dp"
+            android:layout_toLeftOf="@id/info_sub_view"
             android:layout_centerVertical="true"
             android:src="@drawable/traffic_lights_green" />
     </RelativeLayout>

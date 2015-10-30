@@ -24,7 +24,6 @@ import org.restlet.routing.Template;
 import at.alladin.rmbt.statisticServer.OpenTestResource;
 import at.alladin.rmbt.statisticServer.OpenTestSearchResource;
 import at.alladin.rmbt.statisticServer.export.ExportResource;
-import at.alladin.rmbt.statisticServer.export.ImageExport;
 
 public class StatisticServer extends Application
 {
@@ -56,10 +55,10 @@ public class StatisticServer extends Application
         
         router.attach("/statistics", StatisticsResource.class);
 
-        router.attach("/export/netztest-opendata-{year}-{month}.", ExportResource.class, Template.MODE_STARTS_WITH);
+        router.attach("/export/opendata-{year}-{month}.", ExportResource.class, Template.MODE_STARTS_WITH);
         router.attach("/export", ExportResource.class, Template.MODE_STARTS_WITH);
         
-        router.attach("/{lang}/{open_test_uuid}/{size}.png", ImageExport.class);
+//        router.attach("/{lang}/{open_test_uuid}/{size}.png", ImageExport.class);
         
         // administrative resources (access restrictions might be applied to /admin/ 
       

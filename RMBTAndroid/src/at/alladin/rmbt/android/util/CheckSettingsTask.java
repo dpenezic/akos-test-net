@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,9 @@
  ******************************************************************************/
 package at.alladin.rmbt.android.util;
 
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
 import org.json.JSONArray;
@@ -103,8 +105,6 @@ public class CheckSettingsTask extends AsyncTask<Void, Void, JSONArray>
     @Override
     protected void onPostExecute(final JSONArray resultList)
     {
-        System.err.println("\n\n\n" + resultList + "\n\n\n");
-        
         try
         {
         if (serverConn.hasError())
@@ -131,7 +131,6 @@ public class CheckSettingsTask extends AsyncTask<Void, Void, JSONArray>
                     final JSONObject urls = resultListItem.optJSONObject("urls");
                     if (urls != null)
                     {
-                        @SuppressWarnings("unchecked")
                         final Iterator<String> keys = urls.keys();
                         
                         while (keys.hasNext())
@@ -157,6 +156,17 @@ public class CheckSettingsTask extends AsyncTask<Void, Void, JSONArray>
                                 }
                             }
                         }
+                    }
+                    
+                    /* qos names */
+                    final JSONArray qosNames = resultListItem.optJSONArray("qostesttype_desc");
+                    if (qosNames != null) {
+                    	final Map<String, String> qosNamesMap = new HashMap<String, String>();
+                    	for (int i = 0; i < qosNames.length(); i++) {
+                    		JSONObject json = qosNames.getJSONObject(i);
+                    		qosNamesMap.put(json.optString("test_type"), json.optString("name"));
+                    	}
+                    	ConfigHelper.setCachedQoSNames(qosNamesMap, activity);
                     }
                     
                     /* map server */

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,22 @@ package at.alladin.rmbt.android.help;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Fragment;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.DownloadListener;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import at.alladin.openrmbt.android.R;
+import at.alladin.rmbt.android.main.AppConstants;
 import at.alladin.rmbt.android.util.ConfigHelper;
+
+import at.alladin.openrmbt.android.R;
 
 /**
  * 
@@ -79,8 +84,12 @@ public class RMBTHelpFragment extends Fragment
         };
         
         final WebSettings webSettings = webview.getSettings();
+        final String userAgent = AppConstants.getUserAgentString(getActivity());
+        if (userAgent != null) {
+        	webSettings.setUserAgentString(userAgent);
+        }
         webSettings.setJavaScriptEnabled(true);
-        
+                
         webview.setWebViewClient(new WebViewClient()
         {
             @Override
@@ -92,6 +101,16 @@ public class RMBTHelpFragment extends Fragment
                 Log.d(getTag(), "error url:" + failingUrl);
                 webview.loadUrl("file:///android_res/raw/error.html");
                 super.onReceivedError(view, errorCode, description, failingUrl);
+            }
+        });
+        
+        webview.setDownloadListener(new DownloadListener() {
+            public void onDownloadStart(String url, String userAgent,
+                        String contentDisposition, String mimetype,
+                        long contentLength) {
+                Intent i = new Intent(Intent.ACTION_VIEW);
+                i.setData(Uri.parse(url));
+                startActivity(i);
             }
         });
         

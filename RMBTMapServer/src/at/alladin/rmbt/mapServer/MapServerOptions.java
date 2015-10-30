@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,11 @@ package at.alladin.rmbt.mapServer;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -31,6 +33,17 @@ import com.google.common.base.Strings;
 
 final public class MapServerOptions
 {
+    public static MapServerOptions getInstance()
+    {
+        return instance;
+    }
+    
+    public static void initInstance(Classification classification)
+    {
+        instance = new MapServerOptions(classification);
+    }
+    
+    private static volatile MapServerOptions instance;
     
     // 10^(a×4)×10
     // log(a÷10)÷4
@@ -38,72 +51,81 @@ final public class MapServerOptions
     // 10^(a×3)×1000000
     // log(a÷1000000)÷3
     
-    protected static final int[] colors_ryg = new int[] { 0x600000, 0xff0000, 0xffff00, 0x00ff00, 0x00cb00, 0x009600, 0x006100 };
-    protected static final int[] colors_ryg_short = new int[] { 0x600000, 0xff0000, 0xffff00, 0x00ff00, 0x00b000 };    
+    protected final int[] colors_ryg = new int[] { 0x600000, 0xff0000, 0xffff00, 0x00ff00, 0x00cb00, 0x009600, 0x006100 };
+    protected final int[] colors_ryg_short = new int[] { 0x600000, 0xff0000, 0xffff00, 0x00ff00, 0x00b000 };    
     
-    protected static final double[] values_download = new double[] { 0.3871137516, 0.4623712505, 0.5376287495, 0.6128862484, 0.6881437473, 0.7634012462, 0.8386587451 };
-    protected static final String[] captions_download = new String[] { "0.4", "", "1.4", "", "5.7", "", "22.6" };
+    protected final double[] values_download;
+    protected final String[] captions_download;
     
-    protected static final double[] values_upload = new double[] { 0.3118562527, 0.3871137516, 0.4623712505, 0.5376287495, 0.6128862484, 0.6881437473, 0.7634012462 };
-    protected static final String[] captions_upload = new String[] { "0.2", "", "0.7", "", "2.8", "", "11.3" };
+    protected final double[] values_upload;
+    protected final String[] captions_upload;
     
-    protected static final double[] values_ping = new double[] { 0.8996566681, 0.7329900014, 0.5663233348, 0.3996566681, 0.2329900014, 0.0663233348, -0.1003433319 };
-    protected static final String[] captions_ping = new String[] { "500", "", "50", "", "5", "", "0.5" };
+//    protected final double[] values_ping;
+//    protected final String[] captions_ping;
     
-    protected static final Map<String, MapOption> mapOptionMap = new LinkedHashMap<String, MapOption>()
+    protected final Classification classification;
+    
+    private MapServerOptions(Classification classification)
     {
+        this.classification = classification;
+        
+        values_download = new double[7];
+        captions_download = new String[7];
+        calcValues(4, classification.THRESHOLD_DOWNLOAD[1], classification.THRESHOLD_DOWNLOAD[0], values_download, captions_download);
+        
+        values_upload = new double[7];
+        captions_upload = new String[7];
+        calcValues(4, classification.THRESHOLD_UPLOAD[1], classification.THRESHOLD_UPLOAD[0], values_upload, captions_upload);
+        
+//        values_ping = new double[7];
+//        captions_ping = new String[7];
+//        calcValues(3, classification.THRESHOLD_PING[1] / 100000, classification.THRESHOLD_PING[0] / 100000, values_ping, captions_ping);
+        
+        mapOptionMap = genMapOptionMap();
+    }
+
+    private static void calcValues(final double factor, final double d1, final double d2, final double[] values, final String[] captions)
+    {
+        final double d1l = Math.log10(d1 / 10)/factor;
+        final double d2l = Math.log10(d2 / 10)/factor;
+        final double step = d2l - d1l;
+        for (int i = 0; i < values.length; i++)
+        {
+            final double val = d1l + (i - 1.5) * step;
+            values[i] = val;
+            if (i % 2 == 0)
+                captions[i] = String.format(Locale.US, "%.1f", Math.pow(10, val * factor) * 10 / 1000); // to mbit; input is kbit
+            else
+                captions[i] = "";
+        }
+    }
+    
+    //protected static final double[] values_download = new double[] { 0.3871137516, 0.4623712505, 0.5376287495, 0.6128862484, 0.6881437473, 0.7634012462, 0.8386587451 };
+    //protected static final String[] captions_download = new String[] { "0.4", "", "1.4", "", "5.7", "", "22.6" };
+    
+//    protected static final double[] values_upload = new double[] { 0.3118562527, 0.3871137516, 0.4623712505, 0.5376287495, 0.6128862484, 0.6881437473, 0.7634012462 };
+//    protected static final String[] captions_upload = new String[] { "0.2", "", "0.7", "", "2.8", "", "11.3" };
+    
+    protected final double[] values_ping = new double[] { 0.8996566681, 0.7329900014, 0.5663233348, 0.3996566681, 0.2329900014, 0.0663233348, -0.1003433319 };
+    protected final String[] captions_ping = new String[] { "500", "", "50", "", "5", "", "0.5" };
+    
+    protected final Map<String, MapOption> mapOptionMap;
+    
+    protected LinkedHashMap<String, MapOption> genMapOptionMap()
+    {
+        return new LinkedHashMap<String, MapOption>() {
         {
             put("mobile/download", 
                     new MapOption("speed_download", 
                         "speed_download_log",
                         "speed_download is not null AND network_type not in (0, 97, 98, 99)", 
                         
-//                        new int[] { 0xffff00, 0xff0000 },
-//                        new double[] { 0.5, 0.825257499 },
-//                        new String[] { "1", "20" },
-                        
-                        // ampel
-//                        new int[] { 0xff0000, 0xffff00, 0x00ff00 },
-//                        new double[] { 0.5, 0.6626287495, 0.825257499 },
-//                        new String[] { "1", "4.5", "20" },
-                        
-                        // ampel 2
                         colors_ryg,
                         values_download,
                         captions_download,
                         
-                        // LSD
-//                        new int[] { 0x33B5E5, 0xAA66CC, 0x99CC00, 0xFFBB33, 0xFF4444, 0x0099CC, 0x9933CC, 0x669900, 0xFF8800, 0xCC0000 },
-//                        new double[] { 0.5, 0.5361397221, 0.5722794442, 0.6084191663, 0.6445588884, 0.6806986106, 0.7168383327, 0.7529780548, 0.7891177769, 0.825257499 },
-//                        new String[] { "1", "1.4", "1.9", "2.7", "3.8", "5.3", "7.4", "10", "14", "20" },
-                        
-                        // LSD reverse
-//                        new int[] { 0xCC0000, 0xFF8800, 0x669900, 0x9933CC, 0x0099CC, 0xFF4444, 0xFFBB33, 0x99CC00, 0xAA66CC, 0x33B5E5 },
-//                        new double[] { 0.5, 0.5361397221, 0.5722794442, 0.6084191663, 0.6445588884, 0.6806986106, 0.7168383327, 0.7529780548, 0.7891177769, 0.825257499 },
-//                        new String[] { "1", "1.4", "1.9", "2.7", "3.8", "5.3", "7.4", "10", "14", "20" },
-                        
-                        // rotblau
-//                        new int[] { 0x0000ff, 0xff00ff, 0xff0000 },
-//                        new double[] { 0.5, 0.6626287495, 0.825257499 },
-//                        new String[] { "1", "4.5", "20" },
-                        
-                        // blaurot
-//                        new int[] { 0xff0000, 0xff00ff, 0x0000ff },
-//                        new double[] { 0.5, 0.6626287495, 0.825257499 },
-//                        new String[] { "1", "4.5", "20" },
-                        
-                        // .se
-//                        new int[] { 0x9b55fc, 0x344bfc, 0x0ebff7, 0x08fe05, 0xf8fd04, 0xfbbc04, 0xf40204, 0x790204, 0x240204 },
-//                        new double[] { 0.5, 0.5406571874, 0.5813143748, 0.6219715621, 0.6626287495, 0.7032859369, 0.7439431243, 0.7846003116, 0.825257499 },
-//                        new String[] { "1", "1.5", "2.1", "3.1", "4.5", "6.5", "9.5", "14", "20" },
-                        
-                     // falschfarben
-//                        new int[] { 0x811616, 0x81b16, 0x818116, 0x4b8116, 0x168116, 0x16814b, 0x168181, 0x164b81, 0x161681, 0x4b1681, 0x811681 },
-//                        new double[] { 0.5, 0.5325257499, 0.5650514998, 0.5975772497, 0.6301029996, 0.6626287495, 0.6951544994, 0.7276802493, 0.7602059992, 0.7927317491, 0.825257499 },
-//                        new String[] { "1", "1.3", "1.8", "2.5", "3.3", "4.5", "6", "8.1", "11", "14.8", "20" },
-                        
-                        Classification.THRESHOLD_DOWNLOAD,
-                        Classification.THRESHOLD_DOWNLOAD_CAPTIONS,
+                        classification.THRESHOLD_DOWNLOAD,
+                        classification.THRESHOLD_DOWNLOAD_CAPTIONS,
                         "heatmap",
                         false));
             
@@ -114,8 +136,8 @@ final public class MapServerOptions
                         colors_ryg,
                         values_upload,
                         captions_upload,
-                        Classification.THRESHOLD_UPLOAD,
-                        Classification.THRESHOLD_UPLOAD_CAPTIONS,
+                        classification.THRESHOLD_UPLOAD,
+                        classification.THRESHOLD_UPLOAD_CAPTIONS,
                         "heatmap",
                         false));
 
@@ -127,42 +149,30 @@ final public class MapServerOptions
                         colors_ryg,
                         values_ping,
                         captions_ping,
-                        Classification.THRESHOLD_PING,
-                        Classification.THRESHOLD_PING_CAPTIONS,
+                        classification.THRESHOLD_PING,
+                        classification.THRESHOLD_PING_CAPTIONS,
                         "heatmap",
                         true));
             
             put("mobile/signal",
-                    new MapOption("signal_strength",
-                    "signal_strength is not null AND network_type not in (0, 97, 98, 99)",
+                    new MapOption("merged_signal",
+                    "merged_signal is not null AND network_type not in (0, 97, 98, 99)",
                     colors_ryg_short,
                     new double[] { -123.5, -108.5, -93.5, -78.5, -63.5 },
                     new String[] { "", "-108", "-94", "-78", "" },
-                    Classification.THRESHOLD_SIGNAL_MOBILE,
-                    Classification.THRESHOLD_SIGNAL_MOBILE_CAPTIONS,
+                    classification.THRESHOLD_SIGNAL_MOBILE,
+                    classification.THRESHOLD_SIGNAL_MOBILE_CAPTIONS,
                     "heatmap",
                     false));
-            
-            //  filter for LTE signal strength
-            put("mobile/lte_rsrp",
-                    new MapOption("lte_rsrp",
-                    "lte_rsrp is not null AND network_type not in (0, 97, 98, 99)",
-                    colors_ryg_short,
-                    new double[] { -133.5, -118.5, -103.5, -88.5, -73.5 },
-                    new String[] { "", "-118", "-104", "-88", "" },
-                    Classification.THRESHOLD_SIGNAL_RSRP,
-                    Classification.THRESHOLD_SIGNAL_RSRP_CAPTIONS,
-                    "heatmap",
-                    false));
-            
+                        
             put("wifi/download", new MapOption("speed_download",
                     "speed_download_log",
                     "speed_download is not null AND network_type = 99",
                     colors_ryg,
                     values_download,
                     captions_download,
-                    Classification.THRESHOLD_DOWNLOAD,
-                    Classification.THRESHOLD_DOWNLOAD_CAPTIONS,
+                    classification.THRESHOLD_DOWNLOAD,
+                    classification.THRESHOLD_DOWNLOAD_CAPTIONS,
                     "heatmap",
                     false));
             
@@ -173,8 +183,8 @@ final public class MapServerOptions
                     colors_ryg,
                     values_upload,
                     captions_upload,
-                    Classification.THRESHOLD_UPLOAD,
-                    Classification.THRESHOLD_UPLOAD_CAPTIONS,
+                    classification.THRESHOLD_UPLOAD,
+                    classification.THRESHOLD_UPLOAD_CAPTIONS,
                     "heatmap",
                     false));
             
@@ -185,8 +195,8 @@ final public class MapServerOptions
                     colors_ryg,
                     values_ping,
                     captions_ping,
-                    Classification.THRESHOLD_PING,
-                    Classification.THRESHOLD_PING_CAPTIONS,
+                    classification.THRESHOLD_PING,
+                    classification.THRESHOLD_PING_CAPTIONS,
                     "heatmap",
                     true));
             
@@ -195,8 +205,8 @@ final public class MapServerOptions
                     colors_ryg_short,
                     new double[] { -98.5, -83.5, -68.5, -53.5, -38.5 },
                     new String[] { "-99", "", "-69", "", "-39" },
-                    Classification.THRESHOLD_SIGNAL_WIFI,
-                    Classification.THRESHOLD_SIGNAL_WIFI_CAPTIONS,
+                    classification.THRESHOLD_SIGNAL_WIFI,
+                    classification.THRESHOLD_SIGNAL_WIFI_CAPTIONS,
                     "heatmap",
                     false));
             
@@ -207,8 +217,8 @@ final public class MapServerOptions
                     colors_ryg,
                     values_download,
                     captions_download,
-                    Classification.THRESHOLD_DOWNLOAD,
-                    Classification.THRESHOLD_DOWNLOAD_CAPTIONS,
+                    classification.THRESHOLD_DOWNLOAD,
+                    classification.THRESHOLD_DOWNLOAD_CAPTIONS,
                     "shapes",
                     false));
             
@@ -219,8 +229,8 @@ final public class MapServerOptions
                     colors_ryg,
                     values_upload,
                     captions_upload,
-                    Classification.THRESHOLD_UPLOAD,
-                    Classification.THRESHOLD_UPLOAD_CAPTIONS,
+                    classification.THRESHOLD_UPLOAD,
+                    classification.THRESHOLD_UPLOAD_CAPTIONS,
                     "shapes",
                     false));
             
@@ -231,8 +241,8 @@ final public class MapServerOptions
                     colors_ryg,
                     values_ping,
                     captions_ping,
-                    Classification.THRESHOLD_PING,
-                    Classification.THRESHOLD_PING_CAPTIONS,
+                    classification.THRESHOLD_PING,
+                    classification.THRESHOLD_PING_CAPTIONS,
                     "shapes",
                     true));
 
@@ -243,8 +253,8 @@ final public class MapServerOptions
                     colors_ryg,
                     values_download,
                     captions_download,
-                    Classification.THRESHOLD_DOWNLOAD,
-                    Classification.THRESHOLD_DOWNLOAD_CAPTIONS,
+                    classification.THRESHOLD_DOWNLOAD,
+                    classification.THRESHOLD_DOWNLOAD_CAPTIONS,
                     "shapes",
                     false));
             
@@ -255,8 +265,8 @@ final public class MapServerOptions
                     colors_ryg,
                     values_upload,
                     captions_upload,
-                    Classification.THRESHOLD_UPLOAD,
-                    Classification.THRESHOLD_UPLOAD_CAPTIONS,
+                    classification.THRESHOLD_UPLOAD,
+                    classification.THRESHOLD_UPLOAD_CAPTIONS,
                     "shapes",
                     false));
             
@@ -267,23 +277,24 @@ final public class MapServerOptions
                     colors_ryg,
                     values_ping,
                     captions_ping,
-                    Classification.THRESHOLD_PING,
-                    Classification.THRESHOLD_PING_CAPTIONS,
+                    classification.THRESHOLD_PING,
+                    classification.THRESHOLD_PING_CAPTIONS,
                     "shapes",
                     true));
         }
-    };
+        };
+    }
     
-    protected static final List<SQLFilter> defaultMapFilters = Collections.unmodifiableList(new ArrayList<SQLFilter>()
+    protected final List<SQLFilter> defaultMapFilters = Collections.unmodifiableList(new ArrayList<SQLFilter>()
     {
         {
             add(new SQLFilter("t.deleted = false AND t.implausible = false AND t.status = 'FINISHED'"));
         }
     });
     
-    protected static final SQLFilter accuracyMapFilter = new SQLFilter("t.geo_accuracy < 2000"); // 2km
+    protected final SQLFilter accuracyMapFilter = new SQLFilter("t.geo_accuracy < 2000"); // 2km
     
-    protected static final Map<String, MapFilter> mapFilterMap = Collections.unmodifiableMap(new LinkedHashMap<String, MapFilter>()
+    protected final Map<String, MapFilter> mapFilterMap = Collections.unmodifiableMap(new LinkedHashMap<String, MapFilter>()
     {
         {
             put("operator", new MapFilter()
@@ -341,11 +352,11 @@ final public class MapServerOptions
             			if (technology == 2)      // 2G
             				return new SQLFilter("network_type in (1,2,4,5,6,7,11,12,14)");
             			else if (technology == 3) // 3G
-            				return new SQLFilter("network_type in (8,9,10,15)");
+            				return new SQLFilter("network_type in (3,8,9,10,15)");
             			else if (technology == 4) // 4G
             				return new SQLFilter("network_type = 13");
             			else if (technology == 34) // 3G or 4G
-            				return new SQLFilter("network_type in (8,9,10,13,15)");
+            				return new SQLFilter("network_type in (3,8,9,10,13,15)");
             			else
             				return null;
  
@@ -466,7 +477,7 @@ final public class MapServerOptions
                 colorsHexStrings[i] = String.format("#%06x", colors[i]);
             }
             
-            final SortedMap<Double, Integer> sortedIntervals = new TreeMap<Double, Integer>();
+            final SortedMap<Double, Integer> sortedIntervals = new TreeMap<>();
             for (int i = 0; i < intervals.length; i++)
                 sortedIntervals.put(intervals[i], colors[i]);
             
@@ -534,23 +545,42 @@ final public class MapServerOptions
         }
     }
     
-    public static Map<String, MapOption> getMapOptionMap()
+    public Map<String, MapOption> getMapOptionMap()
     {
         return mapOptionMap;
     }
     
-    public static Map<String, MapFilter> getMapFilterMap()
+    public Map<String, MapFilter> getMapFilterMap()
     {
         return mapFilterMap;
     }
     
-    public static List<SQLFilter> getDefaultMapFilters()
+    public boolean isValidFilter(String name)
+    {
+        return mapFilterMap.containsKey(name);
+    }
+    
+    public List<SQLFilter> getDefaultMapFilters()
     {
         return defaultMapFilters;
     }
     
-    public static SQLFilter getAccuracyMapFilter()
+    public SQLFilter getAccuracyMapFilter()
     {
         return accuracyMapFilter;
+    }
+    
+    public static void main(String[] args)
+    {
+        Classification.initInstance(null);
+        final MapServerOptions mso = new MapServerOptions(Classification.getInstance());
+        System.out.println(Arrays.toString(mso.values_download));
+        System.out.println(Arrays.toString(mso.captions_download));
+        System.out.println();
+        System.out.println(Arrays.toString(mso.values_upload));
+        System.out.println(Arrays.toString(mso.captions_upload));
+        System.out.println();
+        System.out.println(Arrays.toString(mso.values_ping));
+        System.out.println(Arrays.toString(mso.captions_ping));
     }
 }

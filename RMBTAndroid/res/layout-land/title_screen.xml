@@ -38,7 +38,7 @@
                 android:contentDescription=""
                 android:paddingLeft="36dp"
                 android:paddingRight="36dp"
-                android:src="@drawable/main_header_text_raw" />
+                android:src="@drawable/akos_logo" />
 
             <RelativeLayout
                 android:layout_width="fill_parent"

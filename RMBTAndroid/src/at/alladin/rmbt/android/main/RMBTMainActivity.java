@@ -1,4 +1,19 @@
 /*******************************************************************************
+ * Copyright 2015 SPECURE GmbH
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *******************************************************************************/
+/*******************************************************************************
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +51,7 @@ import android.app.ActionBar;
 import android.app.Activity;
 import android.app.Fragment;
 import android.app.FragmentManager;
+import android.app.FragmentManager.BackStackEntry;
 import android.app.FragmentTransaction;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
@@ -72,9 +88,10 @@ import android.widget.AdapterView.OnItemClickListener;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.Toast;
-import at.alladin.openrmbt.android.R;
 import at.alladin.rmbt.android.about.RMBTAboutFragment;
 import at.alladin.rmbt.android.adapter.result.OnCompleteListener;
+import at.alladin.rmbt.android.fragments.LogFragment;
+import at.alladin.rmbt.android.fragments.NetstatFragment;
 import at.alladin.rmbt.android.fragments.history.RMBTFilterFragment;
 import at.alladin.rmbt.android.fragments.history.RMBTHistoryFragment;
 import at.alladin.rmbt.android.fragments.result.QoSCategoryPagerFragment;
@@ -82,20 +99,19 @@ import at.alladin.rmbt.android.fragments.result.QoSTestDetailPagerFragment;
 import at.alladin.rmbt.android.fragments.result.RMBTResultPagerFragment;
 import at.alladin.rmbt.android.fragments.result.RMBTTestResultDetailFragment;
 import at.alladin.rmbt.android.help.RMBTHelpFragment;
-import at.alladin.rmbt.android.main.InfoCollector.InfoCollectorType;
 import at.alladin.rmbt.android.map.MapListEntry;
 import at.alladin.rmbt.android.map.MapListSection;
 import at.alladin.rmbt.android.map.MapProperties;
 import at.alladin.rmbt.android.map.RMBTMapFragment;
 import at.alladin.rmbt.android.preferences.RMBTPreferenceActivity;
 import at.alladin.rmbt.android.sync.RMBTSyncFragment;
-import at.alladin.rmbt.android.terms.RMBTNDTCheckFragment;
+import at.alladin.rmbt.android.terms.RMBTCheckFragment;
+import at.alladin.rmbt.android.terms.RMBTCheckFragment.CheckType;
 import at.alladin.rmbt.android.terms.RMBTTermsCheckFragment;
 import at.alladin.rmbt.android.test.RMBTLoopService;
 import at.alladin.rmbt.android.test.RMBTService;
 import at.alladin.rmbt.android.test.RMBTTestFragment;
 import at.alladin.rmbt.android.util.CheckHistoryTask;
-import at.alladin.rmbt.android.util.CheckIpTask;
 import at.alladin.rmbt.android.util.CheckNewsTask;
 import at.alladin.rmbt.android.util.CheckSettingsTask;
 import at.alladin.rmbt.android.util.Config;
@@ -105,14 +121,15 @@ import at.alladin.rmbt.android.util.EndTaskListener;
 import at.alladin.rmbt.android.util.GeoLocation;
 import at.alladin.rmbt.android.util.GetMapOptionsInfoTask;
 import at.alladin.rmbt.android.util.Helperfunctions;
+import at.alladin.rmbt.android.util.LogTask;
 import at.alladin.rmbt.android.util.net.NetworkInfoCollector;
 import at.alladin.rmbt.client.v2.task.result.QoSServerResult;
 import at.alladin.rmbt.client.v2.task.result.QoSServerResult.DetailType;
 import at.alladin.rmbt.client.v2.task.result.QoSServerResultCollection;
 import at.alladin.rmbt.client.v2.task.result.QoSServerResultDesc;
-import at.alladin.rmbt.client.v2.task.result.QoSTestResultEnum;
 
 import com.google.android.gms.maps.model.LatLng;
+import at.alladin.openrmbt.android.R;
 
 /**
  * 
@@ -121,6 +138,10 @@ import com.google.android.gms.maps.model.LatLng;
  */
 public class RMBTMainActivity extends Activity implements MapProperties
 {
+	
+	private final static boolean SHOW_NDT_CHECK = false;
+	private final static boolean SHOW_INFORMATION_COMMISSIONER_CHECK = true;
+	
 	/**
 	 * 
 	 */
@@ -242,7 +263,7 @@ public class RMBTMainActivity extends Activity implements MapProperties
     /**
      * 
      */
-    private int mapOverlayType = MapProperties.MAP_OVERLAY_TYPE_AUTO;
+    private MapOverlay mapOverlayType = MapOverlay.AUTO;
     
     /**
      * 
@@ -320,12 +341,13 @@ public class RMBTMainActivity extends Activity implements MapProperties
 
         ActionBar actionBar = getActionBar();
         actionBar.setDisplayOptions(ActionBar.DISPLAY_SHOW_HOME | ActionBar.DISPLAY_SHOW_TITLE);
+        actionBar.setDisplayUseLogoEnabled(true);
                 
         // initialize the navigation drawer with the main menu list adapter:
         String[] mainTitles = getResources().getStringArray(R.array.navigation_main_titles);
         int[] navIcons = new int[] {R.drawable.ic_action_home, R.drawable.ic_action_history, 
         		R.drawable.ic_action_map, R.drawable.ic_action_stat, R.drawable.ic_action_help, 
-        		R.drawable.ic_action_about, R.drawable.ic_action_settings};
+        		R.drawable.ic_action_about, R.drawable.ic_action_settings, R.drawable.ic_action_about};
 
         MainMenuListAdapter mainMenuAdapter = new MainMenuListAdapter(this, mainTitles, navIcons);
         
@@ -361,7 +383,8 @@ public class RMBTMainActivity extends Activity implements MapProperties
         drawerLayout.setDrawerListener(drawerToggle);
         drawerList.setAdapter(mainMenuAdapter);
         drawerList.setOnItemClickListener(new OnItemClickListener() {
-            final int[] menuIds = new int[] {R.id.action_title_page, R.id.action_history, R.id.action_map, R.id.action_stats, R.id.action_help, R.id.action_info, R.id.action_settings};
+            final int[] menuIds = new int[] {R.id.action_title_page, R.id.action_history, R.id.action_map, 
+            		R.id.action_stats, R.id.action_help, R.id.action_info, R.id.action_settings, R.id.action_netstat, R.id.action_log};
 
 			@Override
 			public void onItemClick(AdapterView<?> parent, View view,
@@ -403,7 +426,7 @@ public class RMBTMainActivity extends Activity implements MapProperties
             currentMapOptions.put("highlight", uuid);
             if (fragment == null)
             {
-                if (! ConfigHelper.isNDTDecisionMade(this))
+                if (false) // deactivated for si // ! ConfigHelper.isNDTDecisionMade(this))
                 {
                     showTermsCheck();
                     showNdtCheck();
@@ -433,27 +456,17 @@ public class RMBTMainActivity extends Activity implements MapProperties
                     	if (networkInfoCollector != null) {
                     		networkInfoCollector.setHasConnectionFromAndroidApi(true);
                     	}                		
-                		//hideInternetWarning();
                 	}
                 	else {              		
                     	if (networkInfoCollector != null) {
                     		networkInfoCollector.setHasConnectionFromAndroidApi(false);
                     	}                     	
-                		//showInternetWarning();
                 	}
                 	
-            		Log.i(DEBUG_TAG, "CONNECTED: " + connected + " FAILOVER: " + isFailover);
-            		
-//               		if (networkInfoCollector != null) {
-//               			networkInfoCollector.onNetworkChange(context, intent);
-//               		}
-//                    if (!connected) {
-//                        //hideInternetWarning();
-//                    	showInternetWarning();
-//                    }
+            		Log.i(DEBUG_TAG, "CONNECTED: " + connected + " FAILOVER: " + isFailover);            		
                 }
             }
-        };
+        };                
     }
     
     @Override
@@ -552,6 +565,12 @@ public class RMBTMainActivity extends Activity implements MapProperties
     	case R.id.action_menu_map:
     		showMapFromPager();
     		break;
+    	case R.id.action_netstat:
+    		showNetstatFragment();
+    		break;
+    	case R.id.action_log:
+    		showLogFragment();
+    		break;
     	}
     }
 
@@ -600,7 +619,6 @@ public class RMBTMainActivity extends Activity implements MapProperties
     protected void onResume() {
     	super.onResume();
     	ViewServer.get(this).setFocusedWindow(this);
-        redirectSystemOutput(ConfigHelper.isSystemOutputRedirectedToFile(this));
     }
     
     /**
@@ -663,19 +681,11 @@ public class RMBTMainActivity extends Activity implements MapProperties
      * 
      * @param context
      */
-    public void checkIp() {
-    	CheckIpTask ipTask = new CheckIpTask(this);
-    	ipTask.setOnCompleteListener(new OnCompleteListener() {
-			
-			@Override
-			public void onComplete(int flag, Object object) {
-				InfoCollector infoCollector = InfoCollector.getInstance();
-				if (infoCollector != null) {
-					infoCollector.dispatchInfoChangedEvent(InfoCollectorType.IP, infoCollector.getIp(), object);
-				}				
-			}
-		});
-    	ipTask.execute();
+    private void checkLogs(final Context context, final OnCompleteListener listener) {
+    	if (ConfigHelper.DEFAULT_SEND_LOG_TO_CONTROL_SERVER) {
+	        final LogTask logTask = new LogTask(this, listener);
+	        logTask.execute();
+    	}
     }
     
     public boolean haveUuid()
@@ -800,7 +810,7 @@ public class RMBTMainActivity extends Activity implements MapProperties
     	popBackStackFull();
     	
         final FragmentTransaction ft = fm.beginTransaction();
-        ft.replace(R.id.fragment_content, new RMBTTermsCheckFragment(), AppConstants.PAGE_TITLE_TERMS_CHECK);
+        ft.replace(R.id.fragment_content, RMBTTermsCheckFragment.getInstance(null), AppConstants.PAGE_TITLE_TERMS_CHECK);
         ft.commit();
     }
     
@@ -808,19 +818,42 @@ public class RMBTMainActivity extends Activity implements MapProperties
 		startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.menu_rtr_web_link))));
     }
     
-    public boolean showNdtCheckIfNecessary()
-    {
-        final boolean ndtDecisionMade = ConfigHelper.isNDTDecisionMade(this);
-        if (! ndtDecisionMade)
-            showNdtCheck();
-        return ! ndtDecisionMade;
+    
+    public boolean showChecksIfNecessary() {
+    	boolean icDecisionMade = true; 
+    	if (SHOW_INFORMATION_COMMISSIONER_CHECK) {
+    		icDecisionMade = ConfigHelper.isICDecisionMade(this);
+    		if (!icDecisionMade) {
+    			showIcCheck();
+    		}
+    	}
+    	
+    	boolean ndtDecisionMade = true;
+    	if (SHOW_NDT_CHECK) {
+	    	ndtDecisionMade = ConfigHelper.isNDTDecisionMade(this);
+	    	if (!ndtDecisionMade) {
+	    		showNdtCheck();
+	    	}
+    	}
+    	
+    	return !ndtDecisionMade || !icDecisionMade;
+    }
+        
+    /**
+     * information commissioner check
+     */
+    public void showIcCheck() {
+        final FragmentTransaction ft = fm.beginTransaction();
+        ft.replace(R.id.fragment_content, RMBTCheckFragment.newInstance(CheckType.INFORMATION_COMMISSIONER), AppConstants.PAGE_TITLE_CHECK_INFORMATION_COMMISSIONER);
+        ft.addToBackStack(AppConstants.PAGE_TITLE_CHECK_INFORMATION_COMMISSIONER);
+        ft.commit();    	
     }
     
     public void showNdtCheck()
     {
         final FragmentTransaction ft = fm.beginTransaction();
-        ft.replace(R.id.fragment_content, new RMBTNDTCheckFragment(), "ndt_check");
-        ft.addToBackStack("ndt_check");
+        ft.replace(R.id.fragment_content, RMBTCheckFragment.newInstance(CheckType.NDT), AppConstants.PAGE_TITLE_NDT_CHECK);
+        ft.addToBackStack(AppConstants.PAGE_TITLE_NDT_CHECK);
         ft.commit();
     }
     
@@ -846,6 +879,16 @@ public class RMBTMainActivity extends Activity implements MapProperties
     
     public void initApp(boolean duringCreate)
     {
+    	//check log directory and send log files to control server if available
+        checkLogs(getApplicationContext(), new OnCompleteListener() {
+			
+			@Override
+			public void onComplete(int flag, Object object) {
+		        //after log check: redirect system output to file if option is set
+		        redirectSystemOutput(ConfigHelper.isSystemOutputRedirectedToFile(RMBTMainActivity.this));
+			}
+		});
+        
     	popBackStackFull();
     	
         FragmentTransaction ft;
@@ -862,7 +905,7 @@ public class RMBTMainActivity extends Activity implements MapProperties
         historyResultLimit = Config.HISTORY_RESULTLIMIT_DEFAULT;
         
         if (! duringCreate && geoLocation != null)
-            geoLocation.start();
+            geoLocation.start();        
     }
     
     /**
@@ -912,6 +955,7 @@ public class RMBTMainActivity extends Activity implements MapProperties
             String testUuid = historyStorageList.get(pos).get("test_uuid");
             //testUuid = "842356d7-a863-48f9-8220-678125fb3a76";
             //testUuid = "0d765559-ab16-4fa1-b776-4040e18bf134";
+            //testUuid = "dbf47f08-711f-4cfa-9fd9-78f06a7a7df3";
             args.putString(RMBTResultPagerFragment.ARG_TEST_UUID, testUuid);
             fragment.setArguments(args);
             
@@ -967,7 +1011,7 @@ public class RMBTMainActivity extends Activity implements MapProperties
      * 
      * @param uid
      */
-    public void showExpandedResultDetail(QoSServerResultCollection testResultArray, DetailType detailType, QoSTestResultEnum testType)
+    public void showExpandedResultDetail(QoSServerResultCollection testResultArray, DetailType detailType, int position)
     {
         FragmentTransaction ft;
         
@@ -983,7 +1027,7 @@ public class RMBTMainActivity extends Activity implements MapProperties
         ft.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN);
         ft.commit();
         
-        fragment.setCurrentPosition(testType);
+        fragment.setCurrentPosition(position);
         refreshActionBar(AppConstants.PAGE_TITLE_RESULT_QOS);
     }
     
@@ -1111,7 +1155,7 @@ public class RMBTMainActivity extends Activity implements MapProperties
     
     /**
      * 
-     * @param url
+     * @param path
      */
     
     public void showHelp(final int resource, boolean popBackStack)
@@ -1198,6 +1242,36 @@ public class RMBTMainActivity extends Activity implements MapProperties
         }
         showHelp(urlStatistic, true, AppConstants.PAGE_TITLE_STATISTICS);
     }
+    
+    public void showNetstatFragment()
+    {
+        FragmentTransaction ft;        
+        ft = fm.beginTransaction();
+        
+        final Fragment fragment = new NetstatFragment();
+        ft.replace(R.id.fragment_content, fragment, AppConstants.PAGE_TITLE_NETSTAT);
+        ft.addToBackStack(AppConstants.PAGE_TITLE_NETSTAT);
+        ft.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN);        	
+        
+        ft.commit();
+        refreshActionBar(AppConstants.PAGE_TITLE_NETSTAT);
+    }
+    
+    public void showLogFragment()
+    {
+        FragmentTransaction ft;        
+        ft = fm.beginTransaction();
+        
+        final Fragment fragment = new LogFragment();
+        ft.replace(R.id.fragment_content, fragment, AppConstants.PAGE_TITLE_LOG);
+        ft.addToBackStack(AppConstants.PAGE_TITLE_LOG);
+        ft.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN);        	
+        
+        ft.commit();
+        refreshActionBar(AppConstants.PAGE_TITLE_LOG);
+    }
+
+
     
     /**
      * 
@@ -1681,12 +1755,12 @@ public class RMBTMainActivity extends Activity implements MapProperties
             callback.historyUpdated(!(historyStorageList.isEmpty() && historyStorageList.isEmpty()) ? HistoryUpdatedCallback.SUCCESSFUL : HistoryUpdatedCallback.LIST_EMPTY);
     }
 
-    public void setMapOverlayType(int mapOverlayType)
+    public void setMapOverlayType(final MapOverlay mapOverlayType)
     {
         this.mapOverlayType = mapOverlayType;
     }
     
-    public int getMapOverlayType()
+    public MapOverlay getMapOverlayType()
     {
         return mapOverlayType;
     }
@@ -1720,11 +1794,17 @@ public class RMBTMainActivity extends Activity implements MapProperties
     }
     
     public void popBackStackFull() {
-    	if (fm.getBackStackEntryCount() > 0) {
-        	fm.popBackStack(fm.getBackStackEntryAt(0).getId(), FragmentManager.POP_BACK_STACK_INCLUSIVE);	
-    	}
-    	
-    	refreshActionBarAndTitle();
+    	runOnUiThread(new Runnable() {
+			
+			@Override
+			public void run() {
+		    	if (fm.getBackStackEntryCount() > 0) {
+		        	fm.popBackStack(fm.getBackStackEntryAt(0).getId(), FragmentManager.POP_BACK_STACK_INCLUSIVE);	
+		    	}
+		    	
+		    	refreshActionBarAndTitle();				
+			}
+		});
     }
     
     /**
@@ -1741,7 +1821,7 @@ public class RMBTMainActivity extends Activity implements MapProperties
         			f.mkdir();
         		}
             
-        		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd", Locale.GERMAN);
+        		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd-HHmm", Locale.GERMAN);
         		//PrintStream fileStream = new PrintStream(new File(f, sdf.format(new Date()) + ".txt"));
         		PrintStream fileStream = new DebugPrintStream(new File(f, sdf.format(new Date()) + ".txt"));
              
@@ -1760,31 +1840,42 @@ public class RMBTMainActivity extends Activity implements MapProperties
         }
     }
     
-    /**
-     * 
-     * @return
-     */
-    protected Fragment getCurrentFragment(){
-    	if (getFragmentManager().getBackStackEntryCount() > 0) {
-    		String fragmentTag = getFragmentManager().getBackStackEntryAt(getFragmentManager().getBackStackEntryCount() - 1).getName();
-    		Fragment currentFragment = getFragmentManager().findFragmentByTag(fragmentTag);
-            return currentFragment;
+    public Fragment getCurrentFragment()
+    {
+    	final int backStackEntryCount = getFragmentManager().getBackStackEntryCount();
+        if (backStackEntryCount > 0)
+        {
+    		try
+            {
+                final BackStackEntry backStackEntryAt = getFragmentManager().getBackStackEntryAt(backStackEntryCount - 1);
+                String fragmentTag = backStackEntryAt.getName();
+                Fragment currentFragment = getFragmentManager().findFragmentByTag(fragmentTag);
+                return currentFragment;
+            }
+            catch (Exception e)
+            {
+                // fix possible race condition:
+                // when called in background thread - back stack could be different between call of
+                // getBackStackEntryCount() and getBackStackEntryAt()
+                e.printStackTrace();
+            }
     	}
-
-    	return null;
+    	
+    	return getFragmentManager().findFragmentByTag(AppConstants.PAGE_TITLE_MAIN);
     }
 
     /**
      * 
      * @return
      */
-    protected String getCurrentFragmentName(){
+    public String getCurrentFragmentName(){
     	if (getFragmentManager().getBackStackEntryCount() > 0) {
     		String fragmentTag = getFragmentManager().getBackStackEntryAt(getFragmentManager().getBackStackEntryCount() - 1).getName();
             return fragmentTag;
     	}
 
-    	return null;
+    	Fragment f = getFragmentManager().findFragmentByTag(AppConstants.PAGE_TITLE_MAIN);
+    	return f != null ? AppConstants.PAGE_TITLE_MAIN : null;
     }
 
     /**

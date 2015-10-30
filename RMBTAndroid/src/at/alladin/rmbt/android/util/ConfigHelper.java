@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,11 @@
  ******************************************************************************/
 package at.alladin.rmbt.android.util;
 
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -26,13 +31,25 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.preference.PreferenceManager;
 import at.alladin.openrmbt.android.R;
+import at.alladin.rmbt.android.adapter.result.QoSCategoryPagerAdapter;
 import at.alladin.rmbt.client.helper.Config;
+import at.alladin.rmbt.client.v2.task.result.QoSTestResultEnum;
 
 public final class ConfigHelper
 {
 	public final static String PREF_KEY_SWIPE_INTRO_COUNTER = "swipe_intro_counter";
 	public final static int SWIPE_INTRO_COUNTER_MAX = 2; 
 	
+	/**
+	 * save log in files locally?
+	 */
+	public final static boolean DEFAULT_REDIRECT_SYSOUT_TO_FILE = false;
+	
+	/**
+	 * send log files to control server?
+	 */
+	public final static boolean DEFAULT_SEND_LOG_TO_CONTROL_SERVER = false;
+
     public static SharedPreferences getSharedPreferences(final Context context)
     {
         return PreferenceManager.getDefaultSharedPreferences(context);
@@ -97,7 +114,7 @@ public final class ConfigHelper
     }
     
     public static boolean isSystemOutputRedirectedToFile(final Context context) {
-    	return getSharedPreferences(context).getBoolean("dev_debug_output", false);
+    	return getSharedPreferences(context).getBoolean("dev_debug_output", DEFAULT_REDIRECT_SYSOUT_TO_FILE);
     }
 
     public static boolean isDontShowMainMenuOnClose(final Context context) {
@@ -175,6 +192,32 @@ public final class ConfigHelper
         getSharedPreferences(context).edit().putBoolean("ndt_decision", value).apply();
     }
     
+    /////////////////////////////////////////////////////////////////
+    // Information Commissioner feature (requested by AKOS)
+    /////////////////////////////////////////////////////////////////
+    
+    public static boolean isInformationCommissioner(final Context context)
+    {
+        return getSharedPreferences(context).getBoolean("information_commissioner", false);
+    }
+    
+    public static void setInformationCommissioner(final Context context, final boolean value)
+    {
+        getSharedPreferences(context).edit().putBoolean("information_commissioner", value).apply();
+    }
+    
+    public static boolean isICDecisionMade(final Context context)
+    {
+        return getSharedPreferences(context).getBoolean("ic_decision", false);
+    }
+    
+    public static void setICDecisionMade(final Context context, final boolean value)
+    {
+        getSharedPreferences(context).edit().putBoolean("ic_decision", value).apply();
+    }
+    
+    /////////////////////////////////////////////////////////////////   
+
     public static String getPreviousTestStatus(final Context context)
     {
         return getSharedPreferences(context).getString("previous_test_status", null);
@@ -447,6 +490,75 @@ public final class ConfigHelper
     	return getSharedPreferences(context).getString("cache_help_url", null);
     }
 
+    /**
+     * 
+     * @param context
+     * @param qosNamesMap
+     */
+    public static void setCachedQoSNames(Map<String, String> qosNamesMap, Context context) {
+    	final SharedPreferences prefs = context.getSharedPreferences("cache_qos_names", Context.MODE_PRIVATE);
+    	final SharedPreferences.Editor edit = prefs.edit();
+    	for (Entry<String, String> e : qosNamesMap.entrySet()) {
+    		edit.putString(e.getKey(), e.getValue());
+    	}
+    	edit.apply();
+    }
+    
+    /**
+     * 
+     * @param context
+     * @return
+     */
+    @SuppressWarnings("unchecked")
+	public static Map<QoSTestResultEnum, String> getCachedQoSNames(Context context) {
+    	final Map<QoSTestResultEnum, String> namesMap = new HashMap<QoSTestResultEnum, String>();
+    	final SharedPreferences prefs = context.getSharedPreferences("cache_qos_names", Context.MODE_PRIVATE);
+    	final Map<String, ?> cacheMap = prefs.getAll();
+    	
+    	if (cacheMap != null && cacheMap.size() > 0) {
+    		Iterator<?> namesIterator = cacheMap.entrySet().iterator();
+    		while(namesIterator.hasNext()) {
+    			Entry<String, String> name = (Entry<String, String>) namesIterator.next();
+    			try {
+    				namesMap.put(QoSTestResultEnum.valueOf(name.getKey().toUpperCase(Locale.US)), name.getValue());
+    			}
+    			catch (IllegalArgumentException e) {
+    				//in case the qos type doesn't exist
+    				e.printStackTrace();
+    			}
+    		}
+    	}
+    	else {
+    		for (Entry<QoSTestResultEnum, Integer> e : QoSCategoryPagerAdapter.TITLE_MAP.entrySet()) {
+    			String name = context.getString(e.getValue());
+    			namesMap.put(e.getKey(), name);
+    		}
+    	}
+    	
+    	return namesMap;
+    }
+    
+    /**
+     * 
+     * @param testType
+     * @param context
+     * @return
+     */
+    public static String getCachedQoSNameByTestType(QoSTestResultEnum testType, Context context) {
+    	final SharedPreferences prefs = context.getSharedPreferences("cache_qos_names", Context.MODE_PRIVATE);
+    	String name = prefs.getString(testType.name(), null);
+    	if (name == null) {
+    		if (QoSCategoryPagerAdapter.TITLE_MAP.containsKey(testType)) {
+    			name = context.getString(QoSCategoryPagerAdapter.TITLE_MAP.get(testType));
+    		}
+    		else {
+    			name = testType.name();
+    		}
+    	}
+
+    	return name;
+    }
+    
     public static boolean isDevEnabled(final Context ctx)
     {
         return PackageManager.SIGNATURE_MATCH == ctx.getPackageManager().checkSignatures(ctx.getPackageName(), at.alladin.rmbt.android.util.Config.RMBT_DEV_UNLOCK_PACKAGE_NAME);

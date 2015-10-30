@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,7 +78,16 @@ public class RMBTTest extends AbstractRMBTTest implements Callable<ThreadTestRes
             coarse = new Results(maxCoarseResults);
         }
         
-        public void addResult(final long newBytes, final long newNsec)
+        @Override
+		public String toString() {
+			return "SingleResult [fine=" + fine + ", coarse=" + coarse
+					+ ", fineResults=" + fineResults + ", coarseResults="
+					+ coarseResults + "]";
+		}
+
+
+
+		public void addResult(final long newBytes, final long newNsec)
         {
             
             boolean addToCoarse = coarseResults == 0;
@@ -225,6 +234,11 @@ public class RMBTTest extends AbstractRMBTTest implements Callable<ThreadTestRes
     {
         long trans;
         long time;
+
+        @Override
+		public String toString() {
+			return "CurrentSpeed [trans=" + trans + ", time=" + time + "]";
+		}
     }
     
     public CurrentSpeed getCurrentSpeed(CurrentSpeed result)
@@ -336,7 +350,11 @@ public class RMBTTest extends AbstractRMBTTest implements Callable<ThreadTestRes
         Socket s = null;
         try
         {
-            
+        	long initTime = 0;
+        	if (threadId == 0) {
+        		initTime = System.nanoTime();
+        	}
+        	
             s = connect(testResult);
             if (s == null)
                 throw new Exception("error during connect to test server");
@@ -367,6 +385,10 @@ public class RMBTTest extends AbstractRMBTTest implements Callable<ThreadTestRes
             {
                 barrier.await();
                 
+            	if (threadId == 0) {
+            		client.setInitTime(System.nanoTime() - initTime);
+            	}
+                
                 startTrafficService(TestStatus.PING);
                 
                 _fallbackToOneThread = fallbackToOneThread.get();
@@ -374,10 +396,11 @@ public class RMBTTest extends AbstractRMBTTest implements Callable<ThreadTestRes
                 if (_fallbackToOneThread && threadId != 0)
                     return null;
                 
-                final int NUMPINGS = 10;
+                final int NUMPINGS = params.getNumPings();
                 long shortestPing = Long.MAX_VALUE;
                 long medianPing = Long.MAX_VALUE;
                 long[] pings = new long[NUMPINGS];
+                final long timeStart = System.nanoTime();
                 if (threadId == 0) // only one thread pings!
                 {
                 	for (int i = 0; i < NUMPINGS; i++)
@@ -385,6 +408,8 @@ public class RMBTTest extends AbstractRMBTTest implements Callable<ThreadTestRes
                 		final Ping ping = ping();
                 		if (ping != null)
                 		{
+                		    client.updatePingStatus(timeStart, i+1, System.nanoTime());
+                		    
                 		    pings[i] = ping.server;
                 			if (ping.client < shortestPing)
                 				shortestPing = ping.client;
@@ -416,6 +441,7 @@ public class RMBTTest extends AbstractRMBTTest implements Callable<ThreadTestRes
             if (doDownload)
             {
                 final int duration = params.getDuration();
+            	//final int duration = 1;
                 
                 setStatus(TestStatus.DOWN);
                 /***** download *****/
@@ -443,6 +469,11 @@ public class RMBTTest extends AbstractRMBTTest implements Callable<ThreadTestRes
                 testResult.down = result.getAllResults();
                 result.addCoarseSpeedItems(testResult.speedItems, false, threadId);
                 
+//                if (threadId == 0) {
+//                	System.out.println("download speed items: " + testResult.speedItems);
+//                	System.out.println("download raw results: " + result);
+//                }
+                
                 curTransfer.set(result.getBytes());
                 curTime.set(result.getNsec());
              
@@ -453,7 +484,8 @@ public class RMBTTest extends AbstractRMBTTest implements Callable<ThreadTestRes
             
             if (doUpload)
             {
-            	final int duration = params.getDuration();
+                final int duration = params.getDuration();
+            	//final int duration = 1;
                 
                 setStatus(TestStatus.INIT_UP);
                 /***** short upload *****/
@@ -841,7 +873,7 @@ public class RMBTTest extends AbstractRMBTTest implements Callable<ThreadTestRes
         });
         
         final long maxnsecs = seconds * 1000000000L;
-        buf[chunksize - 1] = (byte) 0; // set last byte to continue value
+        buf[chunksize - 1] = (byte) 0x00; // set last byte to continue value
         
         final byte[] bufTx = buf.clone();
         final AtomicBoolean terminateTx = new AtomicBoolean(false);
@@ -849,22 +881,22 @@ public class RMBTTest extends AbstractRMBTTest implements Callable<ThreadTestRes
         {
             public Void call() throws Exception
             {
-                do
+                for (;;)
                 {
                     if (Thread.interrupted())
                         throw new InterruptedException();
                     if (terminateTx.get())
                     {
                         // last package
-                        bufTx[chunksize - 1] = (byte) 0xff; // set last byte to
+                        bufTx[chunksize - 1] = (byte) 0xff; // set last byte to termination value
+                        out.write(bufTx, 0, chunksize);
+                        // forces buffered bytes to be written out.
+                        out.flush();
+                        return null;
                     }
-                    out.write(bufTx, 0, chunksize);
+                    else
+                        out.write(bufTx, 0, chunksize);
                 }
-                while (!terminateTx.get());
-                
-                // forces buffered bytes to be written out.
-                out.flush();
-                return null;
             }
         });
 

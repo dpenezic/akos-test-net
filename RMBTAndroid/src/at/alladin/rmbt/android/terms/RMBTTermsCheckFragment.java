@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,8 +25,11 @@ import android.view.ViewGroup;
 import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.TextView;
+
 import at.alladin.openrmbt.android.R;
+
 import at.alladin.rmbt.android.main.RMBTMainActivity;
+import at.alladin.rmbt.android.terms.RMBTCheckFragment.CheckType;
 import at.alladin.rmbt.android.util.ConfigHelper;
 
 public class RMBTTermsCheckFragment extends Fragment
@@ -37,13 +40,20 @@ public class RMBTTermsCheckFragment extends Fragment
     
     private View view;
     
+    private final CheckType followedByType;
+    
+    public static RMBTTermsCheckFragment getInstance(final CheckType followedBy) {
+    	return new RMBTTermsCheckFragment(followedBy);
+    }
+    
+    private RMBTTermsCheckFragment(final CheckType followedBy) {
+    	this.followedByType = followedBy;
+	}
+    
     @Override
     public View onCreateView(final LayoutInflater inflater, final ViewGroup container, final Bundle savedInstanceState)
     {
         view = inflater.inflate(R.layout.terms_check, container, false);
-        
-        final WebView tcWvs = (WebView) view.findViewById(R.id.termsCheckWebViewShort);
-        tcWvs.loadUrl("file:///android_res/raw/terms_conditions_short.html");
         
         final WebView tcWvl = (WebView) view.findViewById(R.id.termsCheckWebViewLong);
         tcWvl.loadUrl("file:///android_res/raw/terms_conditions_long.html");
@@ -65,12 +75,20 @@ public class RMBTTermsCheckFragment extends Fragment
                 if (firstTime)
                 {
                     ((RMBTMainActivity)getActivity()).checkSettings(true, null);
-                    final boolean wasNDTTermsNecessary = ((RMBTMainActivity)getActivity()).showNdtCheckIfNecessary();
+                    final boolean wasNDTTermsNecessary = ((RMBTMainActivity)getActivity()).showChecksIfNecessary();
                     if (! wasNDTTermsNecessary)
                         ((RMBTMainActivity) activity).initApp(false);
                 }
-                else
-                    ((RMBTTermsActivity)getActivity()).showNdtCheck();
+                else if (followedByType != null) {
+                	switch (followedByType) {
+                	case INFORMATION_COMMISSIONER:
+                        ((RMBTTermsActivity)getActivity()).showIcCheck();
+                		break;
+                	case NDT:
+                        ((RMBTTermsActivity)getActivity()).showNdtCheck();
+                		break;
+                	}
+                }
             }
         });
         

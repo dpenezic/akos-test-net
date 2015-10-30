@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,11 +18,14 @@ package at.alladin.rmbt.android.util;
 import android.app.Activity;
 import android.app.Fragment;
 import android.os.Bundle;
+import android.provider.SyncStateContract.Constants;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import at.alladin.rmbt.android.main.AppConstants;
+
 import at.alladin.openrmbt.android.R;
 
 public class RMBTTermsFragment extends Fragment
@@ -45,6 +48,7 @@ public class RMBTTermsFragment extends Fragment
         /* JavaScript must be enabled if you want it to work, obviously */
         // webview.getSettings().setJavaScriptEnabled(true);
         
+        webview.getSettings().setUserAgentString(AppConstants.getUserAgentString(getActivity()));
         webview.getSettings().setSupportZoom(true);
         webview.getSettings().setBuiltInZoomControls(true);
         

@@ -21,13 +21,14 @@
     android:gravity="center_vertical"
     android:minHeight="?android:attr/listPreferredItemHeight"
     android:paddingRight="?android:attr/scrollbarSize"
+    android:paddingLeft="?android:attr/scrollbarSize"
     android:descendantFocusability="blocksDescendants" >
 
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_alignParentLeft="true"
-        android:layout_toLeftOf="@+android:id/checkedView"
+        android:layout_toLeftOf="@+id/checkedView"
         android:layout_gravity="left"
         android:layout_marginLeft="10dp"
         android:gravity="center_vertical|left"
@@ -54,7 +55,7 @@
     </LinearLayout>
 
     <LinearLayout
-        android:id="@+android:id/checkedView"    
+        android:id="@+id/checkedView"    
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_alignParentRight="true"

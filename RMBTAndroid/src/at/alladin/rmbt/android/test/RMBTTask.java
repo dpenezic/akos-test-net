@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,15 +19,24 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import net.measurementlab.ndt.NdtTests;
+
+import org.json.JSONObject;
+
 import android.content.Context;
 import android.location.Location;
 import android.os.Handler;
 import android.telephony.TelephonyManager;
 import android.util.Log;
+import at.alladin.rmbt.android.impl.CpuStatAndroidImpl;
+import at.alladin.rmbt.android.impl.MemInfoAndroidImpl;
+import at.alladin.rmbt.android.impl.TracerouteAndroidImpl;
+import at.alladin.rmbt.android.impl.TrafficServiceImpl;
+import at.alladin.rmbt.android.impl.WebsiteTestServiceImpl;
 import at.alladin.rmbt.android.util.Config;
 import at.alladin.rmbt.android.util.ConfigHelper;
 import at.alladin.rmbt.android.util.InformationCollector;
@@ -40,10 +49,13 @@ import at.alladin.rmbt.client.helper.IntermediateResult;
 import at.alladin.rmbt.client.helper.NdtStatus;
 import at.alladin.rmbt.client.helper.TestStatus;
 import at.alladin.rmbt.client.ndt.NDTRunner;
+import at.alladin.rmbt.client.tools.impl.CpuStatCollector;
+import at.alladin.rmbt.client.tools.impl.MemInfoCollector;
 import at.alladin.rmbt.client.v2.task.QoSTestEnum;
 import at.alladin.rmbt.client.v2.task.result.QoSResultCollector;
 import at.alladin.rmbt.client.v2.task.result.QoSTestResultEnum;
 import at.alladin.rmbt.client.v2.task.service.TestSettings;
+import at.alladin.rmbt.util.tools.InformationCollectorTool;
 
 public class RMBTTask
 {
@@ -196,6 +208,20 @@ public class RMBTTask
                 
                 if (client != null)
                 {
+                	/*
+                	 * Example on how to implement the information collector tool:
+                	 *
+                	 * 
+					*/
+                	
+                	final InformationCollectorTool infoTool = new InformationCollectorTool(TimeUnit.NANOSECONDS, TimeUnit.NANOSECONDS.convert(120, TimeUnit.SECONDS));
+                	infoTool.addCollector(new CpuStatCollector(new CpuStatAndroidImpl(), TimeUnit.NANOSECONDS.convert(1, TimeUnit.SECONDS)));
+                	infoTool.addCollector(new MemInfoCollector(new MemInfoAndroidImpl(), TimeUnit.NANOSECONDS.convert(1, TimeUnit.SECONDS)));
+                	client.setInformationCollectorTool(infoTool);
+                	client.startInformationCollectorTool();
+                	
+                	/////////////////////////////////////////////////////////////////
+
                 	client.setTrafficService(new TrafficServiceImpl());
                     final ControlServerConnection controlConnection = client.getControlConnection();
                     if (controlConnection != null)
@@ -227,8 +253,18 @@ public class RMBTTask
                         result = client.runTest();
                     	final ControlServerConnection controlConnection = client.getControlConnection();
                     	
+                    	final InformationCollectorTool infoCollectorTool = client.getInformationCollectorTool();
+                    	
                         if (result != null && ! fullInfo.getIllegalNetworkTypeChangeDetcted()) {
-                            client.sendResult(fullInfo.getResultValues(controlConnection.getStartTimeNs()));
+                        	final JSONObject infoObject = fullInfo.getResultValues(controlConnection.getStartTimeNs());
+                        	if (infoCollectorTool != null) {
+                        		infoCollectorTool.stop();
+                        		infoObject.put("extended_test_stat", infoCollectorTool.getJsonObject(true, client.getControlConnection().getStartTimeNs()));
+                        	}
+                        	
+                        	infoObject.put("publish_public_data", ConfigHelper.isInformationCommissioner(context));
+
+                            client.sendResult(infoObject);
                         }
                         else {
                             error = true;
@@ -264,6 +300,7 @@ public class RMBTTask
 			            qosTestSettings.setCacheFolder(context.getCacheDir());
 					    qosTestSettings.setWebsiteTestService(new WebsiteTestServiceImpl(context));
 					    qosTestSettings.setTrafficService(new TrafficServiceImpl());
+					    qosTestSettings.setTracerouteServiceClazz(TracerouteAndroidImpl.class);
 						qosTestSettings.setStartTimeNs(getRmbtClient().getControlConnection().getStartTimeNs());
 						qosTestSettings.setUseSsl(ConfigHelper.isQoSSeverSSL(context));
 						
@@ -306,6 +343,7 @@ public class RMBTTask
             {
                 if (client != null)
                 {
+                	client.stopInformationCollectorTool();
                     final TestStatus status = client.getStatus();
                     if (! (status == TestStatus.ABORTED || status == TestStatus.ERROR))
                         client.setStatus(TestStatus.END);

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 package at.alladin.rmbt.controlServer;
 
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -38,6 +39,8 @@ import at.alladin.rmbt.db.Cell_location;
 import at.alladin.rmbt.db.GeoLocation;
 import at.alladin.rmbt.db.Signal;
 import at.alladin.rmbt.db.Test;
+import at.alladin.rmbt.db.TestStat;
+import at.alladin.rmbt.db.dao.TestStatDao;
 import at.alladin.rmbt.db.fields.IntField;
 import at.alladin.rmbt.db.fields.LongField;
 import at.alladin.rmbt.shared.Helperfunctions;
@@ -51,7 +54,7 @@ public class ResultResource extends ServerResource
     final static Pattern MCC_MNC_PATTERN = Pattern.compile("\\d{3}-\\d+");
     
     @Post("json")
-    public String request(final String entity)
+    public String request(final String entity) 
     {
         final String secret = getContext().getParameters().getFirstValue("RMBT_SECRETKEY");
         
@@ -69,7 +72,7 @@ public class ResultResource extends ServerResource
             try
             {
                 request = new JSONObject(entity);
-                //System.out.println(request);
+                System.out.println(request);
                                
                 final String lang = request.optString("client_language");
                 
@@ -143,8 +146,16 @@ public class ResultResource extends ServerResource
                                         if (ipLocalRaw != null)
                                         {
                                             final InetAddress ipLocalAddress = InetAddresses.forString(ipLocalRaw);
-                                            test.getField("client_local_ip").setString(
-                                                    Helperfunctions.filterIp(ipLocalAddress));
+                                            // original address (not filtered)
+                                            test.getField("client_ip_local").setString(
+                                            		InetAddresses.toAddrString(ipLocalAddress));
+                                            // anonymized local address
+                                            final String ipLocalAnonymized = Helperfunctions.anonymizeIp(ipLocalAddress);
+                                            test.getField("client_ip_local_anonymized").setString(ipLocalAnonymized);
+                                            // type of local ip
+                                            test.getField("client_ip_local_type").setString(
+                                                    Helperfunctions.IpType(ipLocalAddress));
+                                            // public ip
                                             final InetAddress ipPublicAddress = InetAddresses.forString(test.getField("client_public_ip").toString());
                                             test.getField("nat_type")
                                                     .setString(Helperfunctions.getNatType(ipLocalAddress, ipPublicAddress));
@@ -162,9 +173,31 @@ public class ResultResource extends ServerResource
                                         final String ipSource = getIP();
                                         test.getField("source_ip").setString(ipSource);
                                         
+                                        //log anonymized address
+                                        try{
+                                        	final InetAddress ipSourceIP = InetAddress.getByName(ipSource);
+                                            final String ipSourceAnonymized = Helperfunctions.anonymizeIp(ipSourceIP);
+                                            test.getField("source_ip_anonymized").setString(ipSourceAnonymized);
+                                        } catch(UnknownHostException e){
+                                            System.out.println("Exception thrown:" + e);
+                                        }
+                                        
+
+                                        
                                         
                                         
                                         // Additional Info
+                                        
+                                        //////////////////////////////////////////////////
+                                        // extended test stats:
+                                        //////////////////////////////////////////////////
+                                        final TestStat extendedTestStat = TestStat.checkForSubmittedTestStats(request, test.getUid());
+                                        if (extendedTestStat != null) {
+                                        	final TestStatDao testStatDao = new TestStatDao(conn);
+                                        	testStatDao.save(extendedTestStat);
+                                        }
+                                        
+                                        //////////////////////////////////////////////////
                                         
                                         JSONArray speedData = request.optJSONArray("speed_detail");
                                         
@@ -476,7 +509,7 @@ public class ResultResource extends ServerResource
                                         else
                                             test.getField("status").setString("ERROR");
                                         
-                                        test.updateTest();
+                                        test.storeTestResults(false);
                                         
                                         if (test.hasError())
                                             errorList.addError(test.getError());

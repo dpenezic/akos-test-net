@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Copyright 2013-2014 alladin-IT GmbH
+  Copyright 2013-2015 alladin-IT GmbH
   
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -23,13 +23,11 @@
 
     <ImageView
         android:id="@+id/headerImageBg"
-        android:layout_width="fill_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|center"
         android:adjustViewBounds="true"
-        android:maxWidth="300dp"
-        android:paddingLeft="35dp"
-        android:paddingRight="35dp"
+        android:padding="10dp"
         android:contentDescription="@string/header_image_description"
         android:src="@drawable/header" />
 
@@ -38,14 +36,6 @@
         android:layout_height="match_parent"
         android:gravity="center_horizontal" >
 
-        <TextView
-            android:id="@+id/info_text"
-            style="@style/textMediumLight"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_centerInParent="true"
-            android:gravity="center"
-            android:text="@string/sync_info_text" />
 
         <RelativeLayout
             android:id="@+id/requestCodeButtonWrapper"
@@ -85,6 +75,17 @@
                 android:background="@drawable/button_selector"
                 android:text="@string/sync_enter_code_button" />
         </RelativeLayout>
+        
+        <TextView
+            android:id="@+id/info_text"
+            style="@style/textMediumLight"
+            android:layout_marginBottom="20dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_above="@id/requestCodeButtonWrapper"
+            android:gravity="center"
+            android:text="@string/sync_info_text" />
+        
     </RelativeLayout>
 
 </LinearLayout>

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013-2014 alladin-IT GmbH
+ * Copyright 2013-2015 alladin-IT GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,7 +73,7 @@ public class CheckIpTask extends AsyncTask<Void, Void, JSONArray>
     protected JSONArray doInBackground(final Void... params)
     {
     	needsRetry = false;
-        serverConn = new ControlServerConnection(activity.getApplicationContext());
+        serverConn = new ControlServerConnection(activity);
         
 
         try {
